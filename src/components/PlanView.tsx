@@ -39,19 +39,26 @@ export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }
     return <p className="hint">Add items above to see what to gather and craft.</p>;
   }
 
-  // Group crafts by profession in first-appearance order; within a group the
-  // dependency order from the engine is preserved. Lets a group split the work
-  // by station ("you take Tailoring, I'll do Carpentry").
-  const groups: { profession: string; steps: typeof crafts }[] = [];
-  const groupIdx = new Map<string, number>();
+  // Group crafts into tiers by dependency depth: final products at the bottom,
+  // their ingredients above, sub-materials above those, etc. An item used at
+  // several depths sits in its deepest (topmost) tier only. Within a tier,
+  // steps are sorted by profession so work can be split by station.
+  const byTier = new Map<number, typeof crafts>();
   for (const c of crafts) {
-    const key = c.profession ?? "Other";
-    if (!groupIdx.has(key)) {
-      groupIdx.set(key, groups.length);
-      groups.push({ profession: key, steps: [] });
-    }
-    groups[groupIdx.get(key)!]!.steps.push(c);
+    const arr = byTier.get(c.tier) ?? [];
+    arr.push(c);
+    byTier.set(c.tier, arr);
   }
+  const tiers = [...byTier.entries()]
+    .sort((a, b) => b[0] - a[0]) // deepest tier first (topmost on the page)
+    .map(([tier, steps]) => ({
+      tier,
+      steps: [...steps].sort(
+        (a, b) =>
+          (a.profession ?? "").localeCompare(b.profession ?? "") ||
+          itemName(a.itemId).localeCompare(itemName(b.itemId)),
+      ),
+    }));
   const totalCrafts = crafts.reduce((n, c) => n + c.crafts, 0);
 
   return (
@@ -67,8 +74,8 @@ export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }
           <b>{gather.length}</b> to gather
         </span>
         <span>
-          <b>{totalCrafts}</b> craft{totalCrafts !== 1 ? "s" : ""} across <b>{groups.length}</b>{" "}
-          profession{groups.length !== 1 ? "s" : ""}
+          <b>{totalCrafts}</b> craft{totalCrafts !== 1 ? "s" : ""} in <b>{tiers.length}</b>{" "}
+          tier{tiers.length !== 1 ? "s" : ""}
         </span>
         <span className="summary-hint">amounts already exclude what you have</span>
       </div>
@@ -98,10 +105,12 @@ export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }
 
       <section className="panel">
         <h2>Craft ({crafts.length})</h2>
-        <p className="hint">Grouped by profession · within each, dependencies come first.</p>
-        {groups.map((group) => (
-          <div key={group.profession} className="prof-group">
-            <h3 className="prof-head">{group.profession}</h3>
+        <p className="hint">By tier — craft top to bottom; final products are last.</p>
+        {tiers.map((group) => (
+          <div key={group.tier} className="prof-group">
+            <h3 className="prof-head">
+              {group.tier === 0 ? "Final products" : `Components · tier ${group.tier}`}
+            </h3>
             <ul className="rows">
               {group.steps.map((c) => {
                 const item = getItem(c.itemId);
@@ -114,6 +123,7 @@ export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }
                     <span className="meta">
                       {c.crafts} craft{c.crafts !== 1 ? "s" : ""}
                       {c.produced !== c.needed ? ` → makes ${c.produced}` : ""}
+                      {c.profession ? ` · ${c.profession}` : ""}
                     </span>
                     {variants.length > 1 && (
                       <select

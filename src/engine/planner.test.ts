@@ -160,6 +160,32 @@ describe("plan", () => {
     expect(gatherMap(p)).toEqual({ heartwood: 100 });
   });
 
+  it("assigns tiers by depth (target = 0, ingredients deeper)", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }]);
+    const tier = Object.fromEntries(p.crafts.map((c) => [c.itemId, c.tier]));
+    expect(tier).toEqual({ table: 0, plank: 1, nail: 1 });
+  });
+
+  it("places a component used at several depths in its deepest tier only", () => {
+    // deluxe <- table x1 + plank x2 ; table <- plank x4 + nail x10
+    const ds = fixture();
+    ds.items.deluxe = item("deluxe", false);
+    ds.recipes.deluxe = {
+      outputItemId: "deluxe",
+      variants: [
+        variant("r_deluxe", 1, [
+          { itemId: "table", count: 1 },
+          { itemId: "plank", count: 2 },
+        ]),
+      ],
+    };
+    const p = plan(ds, [{ itemId: "deluxe", quantity: 1 }]);
+    const plankSteps = p.crafts.filter((c) => c.itemId === "plank");
+    expect(plankSteps).toHaveLength(1); // appears once, not per consumer
+    // deluxe(0) -> table(1) -> plank(2): the deeper path wins over deluxe -> plank(1)
+    expect(plankSteps[0]!.tier).toBe(2);
+  });
+
   it("guards against recipe cycles without hanging", () => {
     const p = plan(fixture(), [{ itemId: "cyc_a", quantity: 1 }]);
     expect(p.warnings.some((w) => /cycle/i.test(w))).toBe(true);

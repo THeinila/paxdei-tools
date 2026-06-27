@@ -14,6 +14,10 @@ export interface Target {
 /** A craft step: make `crafts` batches of `itemId`, producing `produced` units. */
 export interface CraftStep {
   itemId: string;
+  /** Longest dependency distance from a final product (a target is tier 0, its
+   * direct ingredients tier 1, …). An item used at several depths takes its
+   * deepest (max) tier so it appears once, above all its consumers. */
+  tier: number;
   /** Net units that must exist after this step (gross demand minus owned). */
   needed: number;
   /** Number of times the recipe is run (ceil(needed / yield)). */
@@ -125,7 +129,21 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
     for (const id of nodes) if (!order.includes(id)) order.push(id);
   }
 
-  // 3. Propagate demand along the topo order, subtracting owned at each node.
+  // 3. Tier = longest dependency distance from a final product. `order` visits
+  //    every consumer before the item it consumes, so reading depth(node) is
+  //    final by the time we expand its ingredients.
+  const depth = new Map<string, number>();
+  for (const t of targets) depth.set(t.itemId, Math.max(depth.get(t.itemId) ?? 0, 0));
+  for (const id of order) {
+    const d = depth.get(id) ?? 0;
+    const variant = pickVariant(ds, id, pathChoices);
+    if (!variant) continue;
+    for (const ing of variant.ingredients) {
+      depth.set(ing.itemId, Math.max(depth.get(ing.itemId) ?? 0, d + 1));
+    }
+  }
+
+  // 4. Propagate demand along the topo order, subtracting owned at each node.
   for (const t of targets) gross.set(t.itemId, (gross.get(t.itemId) ?? 0) + t.quantity);
 
   const crafts: CraftStep[] = [];
@@ -147,6 +165,7 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
     const produced = batches * variant.yield;
     crafts.push({
       itemId: id,
+      tier: depth.get(id) ?? 0,
       needed: need,
       crafts: batches,
       produced,
@@ -160,11 +179,11 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
     }
   }
 
-  // 4. Crafts are emitted consumers-first; reverse so dependencies come first.
+  // 5. Crafts are emitted consumers-first; reverse so dependencies come first.
   crafts.reverse();
   gather.sort((a, b) => a.itemId.localeCompare(b.itemId));
 
-  // 5. Surface alternative-path choices for the UI.
+  // 6. Surface alternative-path choices for the UI.
   const choices = [...nodes]
     .filter((id) => (ds.recipes[id]?.variants.length ?? 0) > 1)
     .map((id) => ({
