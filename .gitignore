@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+scripts/.cache/
+# Icons are a build artifact — regenerate with `npm run fetch:icons`.
+public/icons/

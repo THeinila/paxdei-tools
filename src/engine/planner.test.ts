@@ -1,0 +1,167 @@
+import { describe, expect, it } from "vitest";
+import { plan } from "./planner.ts";
+import type { Dataset, Item, RecipeVariant } from "./types.ts";
+
+// --- Fixture builder ---------------------------------------------------------
+
+function item(id: string, isRaw: boolean): Item {
+  return {
+    id,
+    name: id,
+    iconPath: null,
+    mainCategoryId: null,
+    categories: [],
+    tier: null,
+    maxStackSize: null,
+    isRaw,
+  };
+}
+
+function variant(
+  recipeId: string,
+  yld: number,
+  ingredients: { itemId: string; count: number }[],
+): RecipeVariant {
+  return { recipeId, yield: yld, ingredients, profession: "Test", professionId: "skill_test" };
+}
+
+/**
+ * Graph:
+ *   wood (raw), iron_ore (raw), sapwood (raw), heartwood (raw)
+ *   plank   <- wood x2            (yield 1)
+ *   nail    <- iron_ore x1        (yield 5)
+ *   table   <- plank x4, nail x10 (yield 1)
+ *   chair   <- plank x2, nail x4  (yield 1)
+ *   charcoal: A <- sapwood x50 (yield 50) | B <- heartwood x100 (yield 100)
+ *   cyc_a <- cyc_b x1 ; cyc_b <- cyc_a x1   (cycle)
+ */
+function fixture(): Dataset {
+  const items: Record<string, Item> = {};
+  for (const id of ["wood", "iron_ore", "sapwood", "heartwood"]) items[id] = item(id, true);
+  for (const id of ["plank", "nail", "table", "chair", "charcoal", "cyc_a", "cyc_b"])
+    items[id] = item(id, false);
+
+  return {
+    items,
+    recipes: {
+      plank: { outputItemId: "plank", variants: [variant("r_plank", 1, [{ itemId: "wood", count: 2 }])] },
+      nail: { outputItemId: "nail", variants: [variant("r_nail", 5, [{ itemId: "iron_ore", count: 1 }])] },
+      table: {
+        outputItemId: "table",
+        variants: [
+          variant("r_table", 1, [
+            { itemId: "plank", count: 4 },
+            { itemId: "nail", count: 10 },
+          ]),
+        ],
+      },
+      chair: {
+        outputItemId: "chair",
+        variants: [
+          variant("r_chair", 1, [
+            { itemId: "plank", count: 2 },
+            { itemId: "nail", count: 4 },
+          ]),
+        ],
+      },
+      charcoal: {
+        outputItemId: "charcoal",
+        variants: [
+          variant("r_charcoal_sapwood", 50, [{ itemId: "sapwood", count: 50 }]),
+          variant("r_charcoal_heartwood", 100, [{ itemId: "heartwood", count: 100 }]),
+        ],
+      },
+      cyc_a: { outputItemId: "cyc_a", variants: [variant("r_a", 1, [{ itemId: "cyc_b", count: 1 }])] },
+      cyc_b: { outputItemId: "cyc_b", variants: [variant("r_b", 1, [{ itemId: "cyc_a", count: 1 }])] },
+    },
+    meta: { generatedAt: "", source: "fixture", recipeCount: 0, itemCount: 0 },
+  };
+}
+
+const gatherMap = (p: ReturnType<typeof plan>) =>
+  Object.fromEntries(p.gather.map((g) => [g.itemId, g.needed]));
+const craftMap = (p: ReturnType<typeof plan>) =>
+  Object.fromEntries(p.crafts.map((c) => [c.itemId, { needed: c.needed, crafts: c.crafts }]));
+
+// --- Tests -------------------------------------------------------------------
+
+describe("plan", () => {
+  it("treats a raw target as a pure gather", () => {
+    const p = plan(fixture(), [{ itemId: "wood", quantity: 5 }]);
+    expect(p.crafts).toHaveLength(0);
+    expect(gatherMap(p)).toEqual({ wood: 5 });
+  });
+
+  it("expands a single craft and its raw inputs", () => {
+    const p = plan(fixture(), [{ itemId: "plank", quantity: 3 }]);
+    expect(craftMap(p)).toEqual({ plank: { needed: 3, crafts: 3 } });
+    expect(gatherMap(p)).toEqual({ wood: 6 });
+  });
+
+  it("rounds craft batches up by yield (nail yields 5)", () => {
+    const p = plan(fixture(), [{ itemId: "nail", quantity: 7 }]);
+    // need 7 -> ceil(7/5) = 2 batches -> produced 10 -> iron_ore 2
+    expect(craftMap(p).nail).toEqual({ needed: 7, crafts: 2 });
+    expect(gatherMap(p)).toEqual({ iron_ore: 2 });
+  });
+
+  it("flattens a multi-level chain with dependency-first ordering", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }]);
+    expect(gatherMap(p)).toEqual({ wood: 8, iron_ore: 2 }); // plank x4 -> wood 8; nail 10 -> 2 batches -> ore 2
+    // table must come after plank and nail
+    const ids = p.crafts.map((c) => c.itemId);
+    expect(ids.indexOf("table")).toBeGreaterThan(ids.indexOf("plank"));
+    expect(ids.indexOf("table")).toBeGreaterThan(ids.indexOf("nail"));
+  });
+
+  it("aggregates a shared intermediate across two targets", () => {
+    const p = plan(fixture(), [
+      { itemId: "table", quantity: 1 },
+      { itemId: "chair", quantity: 1 },
+    ]);
+    // plank: 4 + 2 = 6 -> wood 12 ; nail: 10 + 4 = 14 -> ceil(14/5)=3 batches -> ore 3
+    expect(craftMap(p).plank).toEqual({ needed: 6, crafts: 6 });
+    expect(craftMap(p).nail).toEqual({ needed: 14, crafts: 3 });
+    expect(gatherMap(p)).toEqual({ wood: 12, iron_ore: 3 });
+  });
+
+  it("subtracts owned stock at a raw leaf", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { wood: 8 } });
+    expect(gatherMap(p).wood).toBeUndefined(); // fully covered
+    expect(gatherMap(p)).toEqual({ iron_ore: 2 });
+    expect(craftMap(p).plank).toEqual({ needed: 4, crafts: 4 }); // still must craft planks
+  });
+
+  it("prunes a sub-tree when an intermediate is owned", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { plank: 4 } });
+    expect(craftMap(p).plank).toBeUndefined(); // no need to craft planks
+    expect(gatherMap(p).wood).toBeUndefined(); // so no wood to gather
+    expect(gatherMap(p)).toEqual({ iron_ore: 2 }); // nails still needed
+  });
+
+  it("partially owned intermediate reduces but does not eliminate the branch", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { plank: 1 } });
+    expect(craftMap(p).plank).toEqual({ needed: 3, crafts: 3 }); // 4 - 1 owned
+    expect(gatherMap(p).wood).toBe(6);
+  });
+
+  it("uses the default (first) variant for an alternative-path item", () => {
+    const p = plan(fixture(), [{ itemId: "charcoal", quantity: 100 }]);
+    expect(gatherMap(p)).toEqual({ sapwood: 100 });
+    expect(p.choices).toEqual([
+      { itemId: "charcoal", chosen: "r_charcoal_sapwood", available: ["r_charcoal_sapwood", "r_charcoal_heartwood"] },
+    ]);
+  });
+
+  it("honours an explicit alternative-path choice", () => {
+    const p = plan(fixture(), [{ itemId: "charcoal", quantity: 100 }], {
+      pathChoices: { charcoal: "r_charcoal_heartwood" },
+    });
+    expect(gatherMap(p)).toEqual({ heartwood: 100 });
+  });
+
+  it("guards against recipe cycles without hanging", () => {
+    const p = plan(fixture(), [{ itemId: "cyc_a", quantity: 1 }]);
+    expect(p.warnings.some((w) => /cycle/i.test(w))).toBe(true);
+  });
+});
