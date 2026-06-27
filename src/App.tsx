@@ -13,7 +13,7 @@ export default function App() {
         <span className="tagline">Plan crafts &amp; gathering — Teamcraft-style</span>
       </header>
 
-      <Search onAdd={(id) => addTarget(id, 1)} />
+      <Search onAdd={(id, qty) => addTarget(id, qty)} />
 
       <section className="targets">
         <div className="targets-head">

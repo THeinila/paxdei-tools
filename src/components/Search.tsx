@@ -2,9 +2,13 @@ import { useMemo, useState } from "react";
 import { iconUrl, searchItems } from "../lib/data.ts";
 import type { Item } from "../engine/types.ts";
 
-export function Search({ onAdd }: { onAdd: (itemId: string) => void }) {
+export function Search({ onAdd }: { onAdd: (itemId: string, quantity: number) => void }) {
   const [query, setQuery] = useState("");
+  const [qtys, setQtys] = useState<Record<string, number>>({});
   const results = useMemo(() => searchItems(query), [query]);
+
+  const qtyFor = (id: string) => qtys[id] ?? 1;
+  const setQty = (id: string, n: number) => setQtys((q) => ({ ...q, [id]: Math.max(1, n) }));
 
   return (
     <div className="search">
@@ -18,11 +22,29 @@ export function Search({ onAdd }: { onAdd: (itemId: string) => void }) {
       {results.length > 0 && (
         <ul className="search-results">
           {results.map((item: Item) => (
-            <li key={item.id} className="search-row" onClick={() => onAdd(item.id)}>
+            <li key={item.id} className="search-row" onClick={() => onAdd(item.id, qtyFor(item.id))}>
               <Icon item={item} />
               <span className="search-name">{item.name}</span>
               <span className="search-cat">{item.isRaw ? "raw material" : item.mainCategoryId}</span>
-              <button className="add-btn" aria-label={`Add ${item.name}`}>+</button>
+              <input
+                className="search-qty"
+                type="number"
+                min={1}
+                value={qtyFor(item.id)}
+                aria-label={`Quantity of ${item.name}`}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setQty(item.id, Math.floor(Number(e.target.value) || 1))}
+              />
+              <button
+                className="add-btn"
+                aria-label={`Add ${qtyFor(item.id)} ${item.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAdd(item.id, qtyFor(item.id));
+                }}
+              >
+                +
+              </button>
             </li>
           ))}
         </ul>

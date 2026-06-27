@@ -94,6 +94,15 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
+.search-qty {
+  width: 52px;
+  padding: 4px 6px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
 .add-btn {
   width: 26px;
   height: 26px;
