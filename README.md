@@ -8,6 +8,21 @@ and the stock you already own subtracted at every step.
 The running app is **fully self-standing**: game data is bundled and all icons are
 served locally, so it makes no external requests at runtime.
 
+## Features
+
+- **Search** the full item catalog and add targets with a chosen quantity.
+- **Flattened plan** rolling up every intermediate craft and raw material, with
+  totals aggregated across all targets.
+- **Tiered craft view** — final products at the bottom, their ingredients above,
+  sub-materials above those; a component used at several depths shows once in its
+  deepest tier. Sorted by profession within each tier.
+- **Owned-stock subtraction** — enter what you already have (raw or intermediate)
+  and the plan prunes it, sub-trees included.
+- **Alternative paths** — pick between recipes with genuinely different inputs
+  (e.g. Charcoal from Sapwood vs Heartwood).
+- **Gather guidance** — per-material link to its gaming.tools source page.
+- Crafting list persists in local storage.
+
 ## Quick start
 
 ```bash
@@ -36,7 +51,8 @@ npm run dev       # http://localhost:5173
 ## Architecture
 
 - **`src/engine/`** — pure-TS recipe engine (`planner.ts`): tree flattening,
-  owned-stock subtraction, alternative-path selection, cycle guard. Unit-tested.
+  owned-stock subtraction, dependency-tier assignment, alternative-path
+  selection, cycle guard. Unit-tested.
 - **`src/components/`, `src/lib/`** — React UI (search, crafting list, plan view)
   with local-storage persistence.
 - **`scripts/`** — one-time data pipeline.
@@ -47,6 +63,7 @@ affiliated with Mainframe Industries.
 
 ## Status
 
-MVP single-user planner is complete. Remaining phase: sharing & collaboration
+MVP single-user planner is complete. Next up is sharing & collaboration
 (lightweight handles, share links, progress check-off, near-real-time polling)
-on a local Node + SQLite backend.
+on a local Node + SQLite backend. See [SPRINT_PLAN.md](SPRINT_PLAN.md) for the
+backlog of upcoming features and ideas.
