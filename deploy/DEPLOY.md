@@ -44,17 +44,27 @@ OCI blocks ports in two independent places; miss either and it silently fails.
    sudo netfilter-persistent save
    ```
 
-## Step 3 — Free hostname for HTTPS (no domain purchase)
+## Step 3 — A hostname for HTTPS
 
-Share tokens travel in the URL, so HTTPS is required. Pick one:
+Share tokens travel in the URL, so HTTPS is required, which means a hostname (a
+bare IP can't get a free trusted cert). Pick one:
 
-- **DuckDNS (recommended):** register `paxplanner.duckdns.org` (free) and set its
-  A record to the VM's public IP. Nicer share links.
-- **sslip.io / nip.io (zero-setup):** use `<dashed-ip>.sslip.io` (e.g.
-  `130-61-1-2.sslip.io`) — resolves to your IP with no signup. If one is
-  rate-limited by Let's Encrypt, try the other.
+- **Real-domain subdomain (recommended, current setup):** point a subdomain's DNS
+  **A record** at the VM's public IP — e.g. `paxdei.erech.fi` → `129.151.221.127`.
+  Add it as a plain A record at whatever is authoritative for the domain (e.g.
+  cPanel **Zone Editor** — *not* the "Subdomains" tool, which would point the name
+  at the cPanel host instead of the VM). The app serves at the subdomain root, so
+  **no code changes** are needed. Avoid a sub*path* of an existing site
+  (`domain.tld/thing`): that needs a cross-server reverse proxy plus Vite `base` /
+  API-prefix changes.
+- **No domain yet (free, for testing):** a `sslip.io`/`nip.io` name embedding the
+  IP — `129-151-221-127.sslip.io` — gets a real Let's Encrypt cert with no signup.
+  Caveat: some networks DNS-block these services, so it may not resolve everywhere;
+  fine as a stopgap until a real domain is in place.
 
-Put the chosen hostname in the `Caddyfile`.
+In all cases the DNS name must resolve to the VM **before** Caddy can obtain the
+cert (the HTTP-01 challenge requires Let's Encrypt to reach the VM at that name).
+Put the chosen hostname in the `Caddyfile` (Step 7).
 
 ## Step 4 — Install runtime + build
 

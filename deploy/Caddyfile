@@ -1,7 +1,9 @@
-# Replace the hostname with your DuckDNS name (e.g. paxplanner.duckdns.org)
-# or a sslip.io/nip.io name embedding the VM's public IP (e.g. 130-61-1-2.sslip.io).
-# Caddy obtains and auto-renews a Let's Encrypt cert for it via the HTTP-01
-# challenge, so ports 80 and 443 must be reachable (see DEPLOY.md, Step 2).
-paxplanner.duckdns.org {
+# Public hostname for the service. Use a real subdomain (recommended) whose DNS
+# A record points at this VM's public IP — e.g. paxdei.erech.fi. Caddy obtains
+# and auto-renews a Let's Encrypt cert for it via the HTTP-01 challenge, so ports
+# 80 and 443 must be reachable and DNS must already resolve to the VM (see
+# DEPLOY.md). For a quick test before you have a domain, a sslip.io/nip.io name
+# embedding the IP also works (e.g. 129-151-221-127.sslip.io).
+paxdei.erech.fi {
 	reverse_proxy 127.0.0.1:8787
 }
