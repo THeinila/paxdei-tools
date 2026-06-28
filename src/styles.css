@@ -74,6 +74,29 @@ body {
   font-size: 20px;
   color: var(--text);
 }
+.tool-title-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+.tool-title-input:hover {
+  border-color: var(--border);
+}
+.tool-title-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--panel);
+}
+.tool-breadcrumb {
+  margin-bottom: 10px;
+}
 .tool-note {
   color: var(--muted);
   font-size: 12px;
@@ -152,6 +175,66 @@ body {
 .tool-card.disabled h2 {
   color: var(--muted);
   margin: 0;
+}
+
+/* Planner list directory cards */
+.list-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.list-card:hover {
+  border-color: var(--accent);
+}
+.list-card-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 16px 18px 12px;
+}
+.list-card-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.list-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.list-badge {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--accent-2);
+}
+.list-card-rename {
+  margin: 16px 18px 4px;
+  width: auto;
+  font-size: 15px;
+}
+.list-card-actions {
+  display: flex;
+  gap: 14px;
+  padding: 8px 18px 14px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.list-card-actions .link-btn:hover {
+  color: var(--accent);
 }
 
 /* Search */

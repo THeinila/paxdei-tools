@@ -1,22 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { Search, Icon } from "./components/Search.tsx";
 import { PlanView } from "./components/PlanView.tsx";
 import { getItem, itemName } from "./lib/data.ts";
 import { useList } from "./lib/useList.ts";
 import { createList } from "./lib/api.ts";
 import { ensureHandle, getHandle, promptHandle } from "./lib/handle.ts";
-
-function tokenFromUrl(): string | null {
-  return new URLSearchParams(window.location.search).get("list");
-}
+import { getEntry, updateEntry } from "./lib/directory.ts";
 
 export default function Planner() {
-  const [token, setToken] = useState<string | null>(tokenFromUrl);
-  const { state, result, mode, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, clear } =
-    useList(token);
+  const { listId = "" } = useParams();
+  const entry = getEntry(listId);
+  const [token, setToken] = useState<string | null>(entry?.shareToken ?? null);
+  const { state, result, mode, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
+    useList(listId, token);
   const [shareBusy, setShareBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [handle, setHandleState] = useState<string | null>(getHandle());
+  const [titleDraft, setTitleDraft] = useState(state.name);
+
+  // Keep the title input in sync when the name changes externally (e.g. a poll
+  // on a shared list adopts a collaborator's rename).
+  useEffect(() => setTitleDraft(state.name), [state.name]);
+
+  // Mirror the live state into the directory entry so the cards stay current.
+  // Wait until a shared list has hydrated (ready, no load error) so we don't
+  // overwrite its cached name/count with the empty pre-poll/failed state.
+  useEffect(() => {
+    if (!entry || !ready || (mode === "shared" && error)) return;
+    updateEntry(listId, { name: state.name || "Untitled", targetCount: state.targets.length });
+  }, [entry, ready, mode, error, listId, state.name, state.targets.length]);
+
+  if (!entry) return <Navigate to="/planner" replace />;
+
+  function commitTitle() {
+    const name = titleDraft.trim() || "Untitled";
+    if (name !== state.name) setName(name);
+    setTitleDraft(name);
+  }
 
   async function onShare() {
     setCopied(false);
@@ -30,13 +51,11 @@ export default function Planner() {
       const who = ensureHandle();
       setHandleState(who);
       const created = await createList(
-        { targets: state.targets, pathChoices: state.pathChoices },
+        { name: state.name, targets: state.targets, pathChoices: state.pathChoices },
         state.owned,
         who,
       );
-      const url = new URL(window.location.href);
-      url.searchParams.set("list", created.token);
-      window.history.pushState({}, "", url);
+      updateEntry(listId, { kind: "shared", shareToken: created.token });
       setToken(created.token); // re-mounts useList in shared mode
       await copyLink(created.token);
     } catch (e) {
@@ -47,14 +66,14 @@ export default function Planner() {
   }
 
   async function copyLink(t: string) {
-    const url = new URL(window.location.href);
+    const url = new URL(window.location.origin + "/planner");
     url.searchParams.set("list", t);
     try {
       await navigator.clipboard.writeText(url.toString());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard may be blocked; the URL bar already reflects the link */
+      /* clipboard may be blocked */
     }
   }
 
@@ -65,8 +84,22 @@ export default function Planner() {
 
   return (
     <>
+      <div className="tool-breadcrumb">
+        <Link to="/planner" className="nav-link">
+          ← All lists
+        </Link>
+      </div>
       <div className="tool-header">
-        <h2 className="tool-title">Crafting Planner</h2>
+        <input
+          className="tool-title-input"
+          value={titleDraft}
+          placeholder="Untitled"
+          onChange={(e) => setTitleDraft(e.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+        />
         <div className="header-actions">
           {mode === "shared" && (
             <span className="share-badge">
@@ -133,9 +166,7 @@ export default function Planner() {
         </>
       )}
 
-      <p className="tool-note">
-        Recipe data from paxdei.gaming.tools · inspired by FFXIV Teamcraft
-      </p>
+      <p className="tool-note">Recipe data from paxdei.gaming.tools · inspired by FFXIV Teamcraft</p>
     </>
   );
 }

@@ -10,8 +10,10 @@ import { randomBytes } from "node:crypto";
 import type { DB } from "./db.ts";
 
 /** The collaboratively-editable definition of a list. "Owned" stock is NOT here
- * — it has merged into the per-item progress map (see server/db.ts progress). */
+ * — it has merged into the per-item progress map (see server/db.ts progress).
+ * `name` is the shared list title so every collaborator sees the same label. */
 interface ListStateDef {
+  name: string;
   targets: { itemId: string; quantity: number }[];
   pathChoices: Record<string, string>;
 }
@@ -40,6 +42,7 @@ const MAX_TARGETS = 500;
 const MAX_PATH_CHOICES = 1000;
 const MAX_ID_LEN = 128;
 const MAX_HANDLE_LEN = 64;
+const MAX_NAME_LEN = 80;
 const MAX_QTY = 10_000_000;
 
 function isShortString(v: unknown, max: number): v is string {
@@ -57,6 +60,7 @@ function cleanHandle(v: unknown): string | null {
  * malformed or oversized body can never corrupt or bloat stored state. */
 function sanitizeState(raw: unknown): ListStateDef {
   const obj = (raw ?? {}) as Record<string, unknown>;
+  const name = typeof obj.name === "string" ? obj.name.slice(0, MAX_NAME_LEN) : "";
   const targetsRaw = Array.isArray(obj.targets) ? obj.targets : [];
   const targets = targetsRaw
     .map((t) => t as Record<string, unknown>)
@@ -74,7 +78,7 @@ function sanitizeState(raw: unknown): ListStateDef {
     if (k.length <= MAX_ID_LEN && isShortString(v, MAX_ID_LEN)) pathChoices[k] = v;
     if (Object.keys(pathChoices).length >= MAX_PATH_CHOICES) break;
   }
-  return { targets, pathChoices };
+  return { name, targets, pathChoices };
 }
 
 function progressList(db: DB, listId: number) {

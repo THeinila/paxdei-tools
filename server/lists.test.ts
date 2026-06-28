@@ -41,6 +41,22 @@ describe("create + get", () => {
     expect(body.state.targets).toEqual([{ itemId: "axe", quantity: 2 }]);
   });
 
+  it("round-trips the list name and bounds its length", async () => {
+    const { token } = await createList({ name: "Stronghold supplies", targets: [], pathChoices: {} });
+    const body = (await (await app.request(`/lists/${token}`)).json()) as { state: { name: string } };
+    expect(body.state.name).toBe("Stronghold supplies");
+
+    const long = await createList({ name: "x".repeat(200), targets: [], pathChoices: {} });
+    const longBody = (await (await app.request(`/lists/${long.token}`)).json()) as { state: { name: string } };
+    expect(longBody.state.name.length).toBe(80);
+  });
+
+  it("defaults name to an empty string when absent", async () => {
+    const { token } = await createList({ targets: [], pathChoices: {} });
+    const body = (await (await app.request(`/lists/${token}`)).json()) as { state: { name: string } };
+    expect(body.state.name).toBe("");
+  });
+
   it("404s an unknown token", async () => {
     const res = await app.request("/lists/does-not-exist");
     expect(res.status).toBe(404);

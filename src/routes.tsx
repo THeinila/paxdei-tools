@@ -11,7 +11,14 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Home /> },
-      ...liveTools.map((t) => ({ path: t.path, element: t.element })),
+      // Tools with nested routes become a layout-less path prefix: the tool's own
+      // element is the index (e.g. /planner) and its children sit alongside it
+      // (e.g. /planner/:listId), each rendering directly in the AppShell outlet.
+      ...liveTools.map((t) =>
+        t.children
+          ? { path: t.path, children: [{ index: true, element: t.element }, ...t.children] }
+          : { path: t.path, element: t.element },
+      ),
       { path: "*", element: <Navigate to="/" replace /> },
     ],
   },

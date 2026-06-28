@@ -4,6 +4,7 @@
  * non-clickable placeholder cards and get no route. */
 import type { ReactElement } from "react";
 import Planner from "./planner/Planner.tsx";
+import PlannerHome from "./planner/PlannerHome.tsx";
 
 export interface Tool {
   id: string;
@@ -16,6 +17,8 @@ export interface Tool {
   status: "live" | "soon";
   /** The routed element. Present only for live tools. */
   element?: ReactElement;
+  /** Optional nested routes mounted under `path` (e.g. "/planner/:listId"). */
+  children?: { path: string; element: ReactElement }[];
 }
 
 export const tools: Tool[] = [
@@ -28,7 +31,8 @@ export const tools: Tool[] = [
       "material to gather and intermediate to craft — with owned stock subtracted. " +
       "Share a link to divide the work with your group.",
     status: "live",
-    element: <Planner />,
+    element: <PlannerHome />,
+    children: [{ path: ":listId", element: <Planner /> }],
   },
 ];
 
