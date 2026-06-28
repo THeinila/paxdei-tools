@@ -6,27 +6,31 @@ tracks what's next. Grouped by priority; checkboxes are unstarted.
 
 ---
 
-## Next sprint — Sharing & Collaboration (the remaining MVP phase)
+## ✅ Done — Sharing & Collaboration (completes the MVP)
 
-The locked design (see `../.claude/plans/`): lightweight handle (no real auth),
-near-real-time polling, local **Node + SQLite** backend. Goal: a group can open
-one link and divide the gathering/crafting.
+Shipped per the locked design (see `../.claude/plans/`): lightweight handle (no
+real auth), near-real-time polling, local **Node + SQLite** backend. A group can
+open one link and divide the gathering/crafting. Run with `npm run dev:all`.
 
-- [ ] **Backend skeleton** — small Hono (or Express) API + SQLite. Tables:
-      `lists` (id, share_token, created_at, state JSON), `progress`
-      (list_id, item_id, kind[gather|craft], done_qty, by_handle, updated_at).
-- [ ] **Create / load list** — `POST /lists` returns a secret share token;
-      `GET /lists/:token` returns list + progress. Persist the local crafting
-      list (targets, owned, pathChoices) server-side.
-- [ ] **Handle** — prompt for a display name on first visit, store in
-      localStorage, attach to every progress write.
-- [ ] **Progress check-off** — mark raw materials gathered (partial quantities)
-      and intermediate crafts done; attribute to the editing handle.
-- [ ] **Polling sync** — clients `GET` progress every few seconds and merge;
-      last-write-wins per (item, kind). Show who last touched a row.
-- [ ] **Share UX** — "Share" button → copy link; opening a link hydrates the list.
-- [ ] **E2E check** — two browser sessions, one checks off a row, the other sees
-      it after a poll (per the plan's verification section).
+- [x] **Backend skeleton** — Hono + better-sqlite3 (`server/`). Tables `lists`
+      (id, share_token, version, state JSON, timestamps) and `progress`
+      (list_id, item_id, qty, by_handle, updated_at). `kind` was dropped — owned
+      merged into progress, so an item's kind is derivable from `isRaw`.
+- [x] **Create / load list** — `POST /lists` returns a secret share token;
+      `GET /lists/:token` returns list + progress (the poll endpoint). Targets and
+      pathChoices persist server-side; owned seeds the shared progress map.
+- [x] **Handle** — prompt for a display name, store in localStorage, attach to
+      every progress write. Rename supported.
+- [x] **Progress check-off** — a per-item "have" count (partial quantities),
+      attributed to the editing handle, fed into the engine as owned stock.
+- [x] **Polling sync** — clients `GET` every ~3s and merge. **Concurrency:**
+      progress is **atomic additive deltas** (no lost updates when two gather at
+      once — verified to sum); definition edits are **version-guarded** (409 +
+      rebase). Rows show who last touched them.
+- [x] **Share UX** — "Share" button creates the list + copies the link
+      (`?list=<token>`); opening a link hydrates and starts polling.
+- [x] **E2E check** — verified two sessions converge: one gathers, the other sees
+      it after a poll with attribution; concurrent +10/+10 → 20.
 
 ---
 

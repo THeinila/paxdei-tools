@@ -10,24 +10,35 @@
     "fetch:icons": "tsx scripts/fetch-icons.ts",
     "data": "npm run fetch:raw && npm run build:dataset && npm run fetch:icons",
     "dev": "vite",
+    "server": "tsx watch server/index.ts",
+    "dev:all": "concurrently -k -n web,api \"npm:dev\" \"npm:server\"",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@hono/node-server": "^2.0.6",
+    "better-sqlite3": "^12.11.1",
+    "hono": "^4.12.27",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.3",
     "devalue": "^5.1.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^6.0.7",
     "vitest": "^2.1.8"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
   }
 }

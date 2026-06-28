@@ -1,13 +1,28 @@
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
+import type { ProgressMap } from "../lib/useList.ts";
 import { Icon } from "./Search.tsx";
 
 interface Props {
   result: Plan;
   owned: Record<string, number>;
   pathChoices: Record<string, string>;
+  /** Collaborative "have" entries keyed by item id (shared lists only); empty in
+   * local mode. Used purely to attribute who last touched a row. */
+  progress: ProgressMap;
   setOwned: (itemId: string, qty: number) => void;
   setPathChoice: (itemId: string, recipeId: string) => void;
+}
+
+/** "· Alice" attribution shown on a row whose have-amount someone has set. */
+function By({ progress, itemId }: { progress: ProgressMap; itemId: string }) {
+  const entry = progress[itemId];
+  if (!entry || !entry.byHandle || entry.qty <= 0) return null;
+  return (
+    <span className="by-handle" title={`updated ${new Date(entry.updatedAt).toLocaleString()}`}>
+      · {entry.byHandle}
+    </span>
+  );
 }
 
 function OwnedInput({
@@ -33,7 +48,7 @@ function OwnedInput({
   );
 }
 
-export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }: Props) {
+export function PlanView({ result, owned, pathChoices, progress, setOwned, setPathChoice }: Props) {
   const { crafts, gather, warnings } = result;
   if (crafts.length === 0 && gather.length === 0) {
     return <p className="hint">Add items above to see what to gather and craft.</p>;
@@ -92,6 +107,7 @@ export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }
                 <span className="row-name">{itemName(g.itemId)}</span>
                 <span className="qty">×{g.needed}</span>
                 <OwnedInput itemId={g.itemId} owned={owned} setOwned={setOwned} />
+                <By progress={progress} itemId={g.itemId} />
                 {sourceUrl(item) && (
                   <a className="map-link" href={sourceUrl(item)!} target="_blank" rel="noreferrer">
                     where?
@@ -139,6 +155,7 @@ export function PlanView({ result, owned, pathChoices, setOwned, setPathChoice }
                       </select>
                     )}
                     <OwnedInput itemId={c.itemId} owned={owned} setOwned={setOwned} />
+                    <By progress={progress} itemId={c.itemId} />
                   </li>
                 );
               })}

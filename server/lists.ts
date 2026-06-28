@@ -1,0 +1,199 @@
+/** List + progress route handlers. The server is "dumb storage": it never runs
+ * the recipe engine. Two concurrency strategies live here:
+ *
+ *  - Progress writes are atomic additive deltas (UPSERT with qty = qty + delta),
+ *    so two near-simultaneous "+10 gathered" sum to +20 — no lost updates.
+ *  - List-definition writes are version-guarded (optimistic concurrency): a stale
+ *    baseVersion yields 409 so the client can rebase on the current state. */
+import { Hono } from "hono";
+import { randomBytes } from "node:crypto";
+import type { DB } from "./db.ts";
+
+/** The collaboratively-editable definition of a list. "Owned" stock is NOT here
+ * — it has merged into the per-item progress map (see server/db.ts progress). */
+interface ListStateDef {
+  targets: { itemId: string; quantity: number }[];
+  pathChoices: Record<string, string>;
+}
+
+interface ProgressRow {
+  item_id: string;
+  qty: number;
+  by_handle: string | null;
+  updated_at: string;
+}
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+function newToken(): string {
+  return randomBytes(16).toString("base64url");
+}
+
+function isFiniteNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+/** Accept any shape but coerce to a well-formed definition so a malformed body
+ * can never corrupt stored state. */
+function sanitizeState(raw: unknown): ListStateDef {
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  const targetsRaw = Array.isArray(obj.targets) ? obj.targets : [];
+  const targets = targetsRaw
+    .map((t) => t as Record<string, unknown>)
+    .filter((t) => typeof t.itemId === "string" && isFiniteNumber(t.quantity))
+    .map((t) => ({ itemId: t.itemId as string, quantity: t.quantity as number }));
+  const pathChoicesRaw = (obj.pathChoices ?? {}) as Record<string, unknown>;
+  const pathChoices: Record<string, string> = {};
+  for (const [k, v] of Object.entries(pathChoicesRaw)) {
+    if (typeof v === "string") pathChoices[k] = v;
+  }
+  return { targets, pathChoices };
+}
+
+function progressList(db: DB, listId: number) {
+  const rows = db
+    .prepare(
+      `SELECT item_id, qty, by_handle, updated_at FROM progress WHERE list_id = ? ORDER BY item_id`,
+    )
+    .all(listId) as ProgressRow[];
+  return rows.map((r) => ({
+    itemId: r.item_id,
+    qty: r.qty,
+    byHandle: r.by_handle,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export function createListsRouter(db: DB) {
+  const app = new Hono();
+
+  const findList = db.prepare(
+    `SELECT id, version, state, updated_at FROM lists WHERE share_token = ?`,
+  );
+
+  // Create a list, optionally seeding progress from the creator's local "owned".
+  app.post("/lists", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const state = sanitizeState(body.state);
+    const handle = typeof body.handle === "string" ? body.handle : null;
+    const owned = (body.owned ?? {}) as Record<string, unknown>;
+    const token = newToken();
+    const ts = now();
+
+    const create = db.transaction(() => {
+      const info = db
+        .prepare(
+          `INSERT INTO lists (share_token, version, state, created_at, updated_at)
+           VALUES (?, 0, ?, ?, ?)`,
+        )
+        .run(token, JSON.stringify(state), ts, ts);
+      const listId = Number(info.lastInsertRowid);
+      const seed = db.prepare(
+        `INSERT INTO progress (list_id, item_id, qty, by_handle, updated_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      );
+      for (const [itemId, qtyRaw] of Object.entries(owned)) {
+        const qty = Math.floor(Number(qtyRaw));
+        if (Number.isFinite(qty) && qty > 0) seed.run(listId, itemId, qty, handle, ts);
+      }
+      return listId;
+    });
+    const listId = create();
+
+    return c.json(
+      { token, version: 0, state, progress: progressList(db, listId), updatedAt: ts },
+      201,
+    );
+  });
+
+  // Poll endpoint: full list + progress snapshot.
+  app.get("/lists/:token", (c) => {
+    const row = findList.get(c.req.param("token")) as
+      | { id: number; version: number; state: string; updated_at: string }
+      | undefined;
+    if (!row) return c.json({ error: "not found" }, 404);
+    return c.json({
+      version: row.version,
+      state: JSON.parse(row.state) as ListStateDef,
+      progress: progressList(db, row.id),
+      updatedAt: row.updated_at,
+    });
+  });
+
+  // Version-guarded definition update (optimistic concurrency).
+  app.patch("/lists/:token", async (c) => {
+    const token = c.req.param("token");
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!isFiniteNumber(body.baseVersion)) {
+      return c.json({ error: "baseVersion required" }, 400);
+    }
+    const state = sanitizeState(body.state);
+    const ts = now();
+    const info = db
+      .prepare(
+        `UPDATE lists SET state = ?, version = version + 1, updated_at = ?
+         WHERE share_token = ? AND version = ?`,
+      )
+      .run(JSON.stringify(state), ts, token, body.baseVersion);
+
+    const row = findList.get(token) as
+      | { id: number; version: number; state: string; updated_at: string }
+      | undefined;
+    if (!row) return c.json({ error: "not found" }, 404);
+
+    // changes === 0 with an existing row means the baseVersion was stale.
+    if (info.changes === 0) {
+      return c.json(
+        { error: "version conflict", version: row.version, state: JSON.parse(row.state) },
+        409,
+      );
+    }
+    return c.json({ version: row.version, state: JSON.parse(row.state), updatedAt: row.updated_at });
+  });
+
+  // Atomic additive progress delta. Clamps the stored total at >= 0; the upper
+  // bound is the engine's job (it caps owned at demand) so the client display
+  // stays correct without the server needing to know `needed`.
+  app.post("/lists/:token/progress", async (c) => {
+    const token = c.req.param("token");
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    const itemId = body.itemId;
+    const delta = body.delta;
+    const handle = typeof body.handle === "string" ? body.handle : null;
+    if (typeof itemId !== "string" || !isFiniteNumber(delta)) {
+      return c.json({ error: "itemId and numeric delta required" }, 400);
+    }
+    const row = findList.get(token) as { id: number } | undefined;
+    if (!row) return c.json({ error: "not found" }, 404);
+    const ts = now();
+    const d = Math.trunc(delta);
+
+    // Read-add-clamp-write in one transaction. better-sqlite3 is synchronous and
+    // the process is the sole writer, so no other write interleaves the read and
+    // the write — this is the atomic additive delta. Clamped at >= 0; the engine
+    // caps the upper bound at demand.
+    const applyDelta = db.transaction((listId: number, item: string) => {
+      const cur = db
+        .prepare(`SELECT qty FROM progress WHERE list_id = ? AND item_id = ?`)
+        .get(listId, item) as { qty: number } | undefined;
+      const next = Math.max(0, (cur?.qty ?? 0) + d);
+      db.prepare(
+        `INSERT INTO progress (list_id, item_id, qty, by_handle, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(list_id, item_id) DO UPDATE SET
+           qty = excluded.qty, by_handle = excluded.by_handle, updated_at = excluded.updated_at`,
+      ).run(listId, item, next, handle, ts);
+    });
+    applyDelta(row.id, itemId);
+
+    const updated = db
+      .prepare(`SELECT qty, by_handle, updated_at FROM progress WHERE list_id = ? AND item_id = ?`)
+      .get(row.id, itemId) as { qty: number; by_handle: string | null; updated_at: string };
+
+    return c.json({ itemId, qty: updated.qty, byHandle: updated.by_handle, updatedAt: updated.updated_at });
+  });
+
+  return app;
+}

@@ -5,3 +5,7 @@ dist/
 scripts/.cache/
 # Icons are a build artifact — regenerate with `npm run fetch:icons`.
 public/icons/
+# Local SQLite database for the sharing backend.
+server/data.sqlite
+server/data.sqlite-wal
+server/data.sqlite-shm
