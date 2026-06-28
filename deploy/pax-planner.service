@@ -1,0 +1,18 @@
+[Unit]
+Description=pax-planner sharing backend (Hono + SQLite, serves built SPA)
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/pax-planner
+ExecStart=/usr/bin/npm start
+# Keep the API on loopback; Caddy is the only public listener.
+Environment=PORT=8787
+Environment=HOST=127.0.0.1
+# Persist the SQLite file outside the git checkout so `git pull` never touches it.
+Environment=DB_PATH=/opt/pax-planner/data/data.sqlite
+Restart=always
+RestartSec=2
+User=ubuntu
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+# Replace the hostname with your DuckDNS name (e.g. paxplanner.duckdns.org)
+# or a sslip.io/nip.io name embedding the VM's public IP (e.g. 130-61-1-2.sslip.io).
+# Caddy obtains and auto-renews a Let's Encrypt cert for it via the HTTP-01
+# challenge, so ports 80 and 443 must be reachable (see DEPLOY.md, Step 2).
+paxplanner.duckdns.org {
+	reverse_proxy 127.0.0.1:8787
+}

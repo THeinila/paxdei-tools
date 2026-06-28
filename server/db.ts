@@ -9,10 +9,13 @@ import { dirname, join } from "node:path";
 export type DB = Database.Database;
 
 /** Open a connection, apply pragmas, and run idempotent migrations.
- * Pass ":memory:" (the default for tests) or an absolute file path. */
+ * Pass ":memory:" (the default for tests) or an absolute file path. When no
+ * argument is given, honor DB_PATH so a deployment can keep the database on a
+ * persistent volume outside the code checkout; otherwise fall back to a file
+ * next to the server. */
 export function openDb(file?: string): DB {
   const here = dirname(fileURLToPath(import.meta.url));
-  const path = file ?? join(here, "data.sqlite");
+  const path = file ?? process.env.DB_PATH ?? join(here, "data.sqlite");
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
