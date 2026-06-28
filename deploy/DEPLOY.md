@@ -1,5 +1,10 @@
 # Deploying pax-planner on Oracle Cloud "Always Free"
 
+> **Status:** live and verified at **https://paxdei.erech.fi** (Oracle Always-Free
+> ARM VM, `129.151.221.127`). End-to-end checks below — TLS, create/share,
+> concurrent additive progress, reboot persistence, and systemd auto-restart — all
+> pass. This file is the runbook to reproduce or update that deployment.
+
 Host pax-planner for a small group (≤20 daily users) for **$0/month** on an
 Oracle Cloud Infrastructure (OCI) Always-Free VM. The app keeps shared lists in a
 SQLite file on local disk, so a plain VM with a persistent boot volume runs it
