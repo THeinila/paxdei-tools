@@ -1,6 +1,6 @@
 # Sprint Plan & Backlog
 
-Forward-looking backlog for the Pax Dei Planner. The single-user MVP (search →
+Forward-looking backlog for Pax Dei Tools (Crafting Planner). The single-user MVP (search →
 tiered plan → owned-stock subtraction, fully self-standing) is done. This doc
 tracks what's next. Grouped by priority; checkboxes are unstarted.
 

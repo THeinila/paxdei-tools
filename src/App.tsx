@@ -67,8 +67,8 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div>
-          <h1>Pax Dei Planner</h1>
-          <span className="tagline">Plan crafts &amp; gathering — Teamcraft-style</span>
+          <h1>Pax Dei Tools</h1>
+          <span className="subtitle">Crafting Planner</span>
         </div>
         <div className="header-actions">
           {mode === "shared" && (
@@ -137,7 +137,8 @@ export default function App() {
       )}
 
       <footer className="footer">
-        Data scraped from paxdei.gaming.tools · fan project, not affiliated with Mainframe
+        Recipe data from paxdei.gaming.tools · inspired by FFXIV Teamcraft · fan project, not
+        affiliated with Mainframe
       </footer>
     </div>
   );

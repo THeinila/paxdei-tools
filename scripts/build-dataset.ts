@@ -10,6 +10,10 @@
  *     highest-yield one (e.g. by-hand vs passive station).
  *   - Genuinely different input paths (e.g. Charcoal from Sapwood vs Heartwood)
  *     are all kept as selectable alternatives.
+ *   - A few items are forced to "raw" (FORCE_RAW): their recipes are dropped so
+ *     they become gathered materials. Used for the medium/"normal" animal hides,
+ *     whose only recipes combine small hides or split large hides — we treat the
+ *     normal hide as the gathered unit instead of recursing into those.
  *
  * Prereq: run `npm run fetch:raw` first to populate scripts/.cache/.
  * Run: npm run build:dataset
@@ -56,6 +60,14 @@ function stem(id: string): string {
   s = s.replace(QUALIFIER, "");
   return s;
 }
+
+/** Output items forced to "raw" — their recipes are dropped and they are gathered.
+ * The normal/rough animal hides only have combine-from-small / split-from-large
+ * recipes; we treat the normal hide as the gathered unit for leather. */
+const FORCE_RAW = new Set<string>([
+  "item_raw_material_medium_animal_hide",
+  "item_raw_material_medium_animal_hide_rough",
+]);
 
 function loadRaw(): { recipes: RawRecipe[]; market: Record<string, any> } {
   const rp = resolve(CACHE, "recipes.raw.json");
@@ -140,9 +152,16 @@ function main() {
 
   const droppedRefinements: string[] = [];
   const collapsed: string[] = [];
+  const forcedRaw: string[] = [];
   const recipes: Record<string, ItemRecipes> = {};
 
   for (const [outId, variants] of byOut) {
+    // Rule 0: forced-raw items keep no recipe and stay gathered materials.
+    if (FORCE_RAW.has(outId)) {
+      forcedRaw.push(outId);
+      continue;
+    }
+
     // Rule 1: drop refinement recipes (an ingredient is a tier-variant of the output),
     // but only if a non-refinement (from-base) recipe survives.
     const isRefinement = (v: RecipeVariant) =>
@@ -201,10 +220,10 @@ function main() {
     },
   };
 
-  return { dataset, droppedRefinements, collapsed };
+  return { dataset, droppedRefinements, collapsed, forcedRaw };
 }
 
-const { dataset, droppedRefinements, collapsed } = main();
+const { dataset, droppedRefinements, collapsed, forcedRaw } = main();
 
 await mkdir(DATA, { recursive: true });
 await writeFile(resolve(DATA, "dataset.json"), JSON.stringify(dataset));
@@ -213,6 +232,8 @@ console.log(`items:   ${dataset.meta.itemCount}`);
 console.log(`recipes: ${dataset.meta.recipeCount} variants across ${Object.keys(dataset.recipes).length} output items`);
 const raws = Object.values(dataset.items).filter((i) => i.isRaw).length;
 console.log(`raw (gathered) items: ${raws}`);
+console.log(`\nforced to raw (recipes dropped) (${forcedRaw.length}):`);
+for (const f of forcedRaw) console.log("  " + f);
 console.log(`\ndropped refinement recipes (${droppedRefinements.length}):`);
 for (const d of droppedRefinements) console.log("  " + d);
 console.log(`\ncollapsed same-input variants (${collapsed.length}):`);

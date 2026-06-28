@@ -1,6 +1,7 @@
-# Pax Dei Planner
+# Pax Dei Tools
 
-An FFXIV Teamcraft-style crafting & gathering planner for the MMO **Pax Dei**.
+A suite of tools for the MMO **Pax Dei**. The first is the **Crafting Planner**,
+an FFXIV Teamcraft-style crafting & gathering planner.
 Search items, add them to a list, and get a flattened plan of every raw material
 to gather and intermediate craft to make — with totals aggregated across targets
 and the stock you already own subtracted at every step.
@@ -75,7 +76,7 @@ npm run dev:all   # Vite (5173) + share API (8787); Vite proxies /api to the API
   list-definition edits are version-guarded (optimistic concurrency → 409 + rebase).
 - **`scripts/`** — one-time data pipeline.
 
-Game data is scraped from [paxdei.gaming.tools](https://paxdei.gaming.tools/)
+Recipe data is sourced from [paxdei.gaming.tools](https://paxdei.gaming.tools/)
 (a single devalue-encoded `recipes.d.json` on their CDN). Fan project; not
 affiliated with Mainframe Industries.
 

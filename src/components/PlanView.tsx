@@ -125,7 +125,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
         {tiers.map((group) => (
           <div key={group.tier} className="prof-group">
             <h3 className="prof-head">
-              {group.tier === 0 ? "Final products" : `Components · tier ${group.tier}`}
+              {group.tier === 0 ? "Final products" : `Components · Tier ${group.tier}`}
             </h3>
             <ul className="rows">
               {group.steps.map((c) => {
