@@ -22,6 +22,9 @@ app.use("/api/*", bodyLimit({ maxSize: 64 * 1024 }));
 app.use("/api/*", rateLimit({ name: "api", limit: 120, windowMs: 60_000 }));
 app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_000 }));
 
+// The crafting planner's API. As the suite grows, each tool mounts its own
+// router under its own namespace (e.g. app.route("/api/<tool>", ...)) so routes
+// never collide; these planner routes predate that convention and keep /api/lists.
 app.route("/api", createListsRouter(db));
 
 // Serve the production build when present (no-op in dev, where Vite serves it).

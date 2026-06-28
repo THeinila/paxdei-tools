@@ -65,15 +65,26 @@ npm run dev:all   # Vite (5173) + share API (8787); Vite proxies /api to the API
 
 ## Architecture
 
-- **`src/engine/`** — pure-TS recipe engine (`planner.ts`): tree flattening,
-  owned-stock subtraction, dependency-tier assignment, alternative-path
-  selection, cycle guard. Unit-tested.
-- **`src/components/`, `src/lib/`** — React UI (search, crafting list, plan view).
-  `useList` runs in two modes: local (localStorage) or shared (server-backed,
-  polled). The shared "have" map is fed into the engine exactly as owned stock.
+The site is a multi-tool suite. A shared shell provides the header/nav and a
+landing page; each tool is a self-contained module under `src/tools/<tool>/`.
+
+- **`src/shell/`** — site chrome: `AppShell.tsx` (header + nav + footer with an
+  `<Outlet/>`) and `Home.tsx` (the tool-directory landing page).
+- **`src/tools/registry.tsx`** — the single source of truth listing every tool;
+  both the routing table (`src/routes.tsx`) and the landing page are generated
+  from it. Adding a tool is one registry entry plus its component.
+- **`src/tools/planner/`** — the Crafting Planner (the first tool):
+  - **`engine/`** — pure-TS recipe engine (`planner.ts`): tree flattening,
+    owned-stock subtraction, dependency-tier assignment, alternative-path
+    selection, cycle guard. Unit-tested.
+  - **`components/`, `lib/`** — React UI (search, crafting list, plan view).
+    `useList` runs in two modes: local (localStorage) or shared (server-backed,
+    polled). The shared "have" map is fed into the engine exactly as owned stock.
 - **`server/`** — share backend (Hono + better-sqlite3). Two concurrency strategies:
   progress writes are atomic additive deltas (`qty = qty + delta`, no lost updates);
   list-definition edits are version-guarded (optimistic concurrency → 409 + rebase).
+  The planner's routes live under `/api/lists*`; future tools mount their own
+  routers under `/api/<tool>/…`.
 - **`scripts/`** — one-time data pipeline.
 
 Recipe data is sourced from [paxdei.gaming.tools](https://paxdei.gaming.tools/)

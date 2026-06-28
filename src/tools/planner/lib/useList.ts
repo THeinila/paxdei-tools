@@ -22,8 +22,10 @@ import {
   type ProgressEntry,
 } from "./api.ts";
 import { ensureHandle } from "./handle.ts";
+import { loadContent, saveContent } from "./directory.ts";
 
 export interface ListState {
+  name: string;
   targets: Target[];
   owned: Record<string, number>;
   pathChoices: Record<string, string>;
@@ -32,19 +34,8 @@ export interface ListState {
 export type Mode = "local" | "shared";
 export type ProgressMap = Record<string, ProgressEntry>;
 
-const KEY = "paxdei-planner:list:v1";
 const POLL_MS = 3000;
-const EMPTY: ListState = { targets: [], owned: {}, pathChoices: {} };
-
-function loadLocal(): ListState {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (raw) return JSON.parse(raw) as ListState;
-  } catch {
-    /* ignore */
-  }
-  return EMPTY;
-}
+const EMPTY: ListState = { name: "", targets: [], owned: {}, pathChoices: {} };
 
 // --- Pure definition updaters (shared by both modes) -------------------------
 
@@ -93,12 +84,15 @@ export interface UseList {
   setTargetQty: (itemId: string, quantity: number) => void;
   setOwned: (itemId: string, qty: number) => void;
   setPathChoice: (itemId: string, recipeId: string) => void;
+  setName: (name: string) => void;
   clear: () => void;
 }
 
-export function useList(token: string | null): UseList {
+/** Identify the list to operate on: a directory `id` (for localStorage content)
+ * and an optional share `token` (present iff the list is shared). */
+export function useList(id: string, token: string | null): UseList {
   const mode: Mode = token ? "shared" : "local";
-  const [state, setState] = useState<ListState>(() => (token ? EMPTY : loadLocal()));
+  const [state, setState] = useState<ListState>(() => (token ? EMPTY : loadContent(id)));
   const [progress, setProgress] = useState<ProgressMap>({});
   const [ready, setReady] = useState(!token); // local is ready immediately
   const [error, setError] = useState<string | null>(null);
@@ -109,20 +103,20 @@ export function useList(token: string | null): UseList {
   const pendingEdits = useRef(0);
   // Synchronous mirror of the current definition, so edits can read the latest
   // value without waiting for a render to commit.
-  const defRef = useRef<ListStateDef>({ targets: state.targets, pathChoices: state.pathChoices });
+  const defRef = useRef<ListStateDef>({
+    name: state.name,
+    targets: state.targets,
+    pathChoices: state.pathChoices,
+  });
   useEffect(() => {
-    defRef.current = { targets: state.targets, pathChoices: state.pathChoices };
-  }, [state.targets, state.pathChoices]);
+    defRef.current = { name: state.name, targets: state.targets, pathChoices: state.pathChoices };
+  }, [state.name, state.targets, state.pathChoices]);
 
   // --- Local mode: persist to localStorage -----------------------------------
   useEffect(() => {
     if (mode !== "local") return;
-    try {
-      localStorage.setItem(KEY, JSON.stringify(state));
-    } catch {
-      /* ignore */
-    }
-  }, [mode, state]);
+    saveContent(id, state);
+  }, [mode, id, state]);
 
   // --- Shared mode: hydrate + poll -------------------------------------------
   const applySnapshot = useCallback(
@@ -130,8 +124,14 @@ export function useList(token: string | null): UseList {
       versionRef.current = snap.version;
       const progMap = indexProgress(snap.progress);
       setProgress(progMap);
-      if (adoptDef) defRef.current = { targets: snap.state.targets, pathChoices: snap.state.pathChoices };
+      if (adoptDef)
+        defRef.current = {
+          name: snap.state.name,
+          targets: snap.state.targets,
+          pathChoices: snap.state.pathChoices,
+        };
       setState((s) => ({
+        name: adoptDef ? snap.state.name : s.name,
         targets: adoptDef ? snap.state.targets : s.targets,
         pathChoices: adoptDef ? snap.state.pathChoices : s.pathChoices,
         owned: progressToOwned(progMap),
@@ -177,7 +177,7 @@ export function useList(token: string | null): UseList {
       // so back-to-back edits compose correctly.
       const next = fn(defRef.current);
       defRef.current = next;
-      setState((s) => ({ ...s, targets: next.targets, pathChoices: next.pathChoices }));
+      setState((s) => ({ ...s, name: next.name, targets: next.targets, pathChoices: next.pathChoices }));
       if (!token) return;
 
       pendingEdits.current += 1;
@@ -192,7 +192,12 @@ export function useList(token: string | null): UseList {
               versionRef.current = e.current.version;
               const rebased = fn(e.current.state);
               defRef.current = rebased;
-              setState((s) => ({ ...s, targets: rebased.targets, pathChoices: rebased.pathChoices }));
+              setState((s) => ({
+                ...s,
+                name: rebased.name,
+                targets: rebased.targets,
+                pathChoices: rebased.pathChoices,
+              }));
               const saved = await patchList(token, rebased, e.current.version);
               versionRef.current = saved.version;
             } catch (err) {
@@ -221,7 +226,14 @@ export function useList(token: string | null): UseList {
     (itemId: string, recipeId: string) => editDef((d) => setPathChoiceDef(d, itemId, recipeId)),
     [editDef],
   );
-  const clear = useCallback(() => editDef(() => ({ targets: [], pathChoices: {} })), [editDef]);
+  const setName = useCallback(
+    (name: string) => editDef((d) => ({ ...d, name })),
+    [editDef],
+  );
+  const clear = useCallback(
+    () => editDef((d) => ({ name: d.name, targets: [], pathChoices: {} })),
+    [editDef],
+  );
 
   // --- The "have" map: local owned, or collaborative progress deltas ---------
   const setOwned = useCallback(
@@ -278,6 +290,7 @@ export function useList(token: string | null): UseList {
     setTargetQty,
     setOwned,
     setPathChoice,
+    setName,
     clear,
   };
 }

@@ -15,8 +15,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { localIconName } from "../src/lib/iconName.ts";
-import type { Dataset } from "../src/engine/types.ts";
+import { localIconName } from "../src/tools/planner/lib/iconName.ts";
+import type { Dataset } from "../src/tools/planner/engine/types.ts";
 
 const execFileAsync = promisify(execFile);
 const __dirname = dirname(fileURLToPath(import.meta.url));

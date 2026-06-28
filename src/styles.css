@@ -28,13 +28,82 @@ body {
   padding: 24px 16px 64px;
 }
 
-.header {
+/* Site shell */
+.site-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+}
+.site-nav {
+  display: flex;
+  gap: 16px;
+}
+.nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+.nav-link:hover {
+  color: var(--text);
+}
+.nav-link.active {
+  color: var(--text);
+}
+
+/* Per-tool sub-header (e.g. the planner toolbar) */
+.tool-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 20px;
 }
+.tool-title {
+  margin: 0;
+  font-size: 20px;
+  color: var(--text);
+}
+.tool-title-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+.tool-title-input:hover {
+  border-color: var(--border);
+}
+.tool-title-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--panel);
+}
+.tool-breadcrumb {
+  margin-bottom: 10px;
+}
+.tool-note {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 28px;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -66,14 +135,106 @@ body {
   font-size: 12px;
   white-space: nowrap;
 }
-.header h1 {
-  margin: 0;
-  font-size: 24px;
+/* Landing page */
+.home-intro {
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0 0 24px;
+}
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+.tool-card {
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: var(--text);
+}
+.tool-card:hover:not(.disabled) {
+  border-color: var(--accent);
+}
+.tool-card h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
   color: var(--accent);
 }
-.subtitle {
+.tool-card p {
+  margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+.tool-card.disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.tool-card.disabled h2 {
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Planner list directory cards */
+.list-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.list-card:hover {
+  border-color: var(--accent);
+}
+.list-card-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 16px 18px 12px;
+}
+.list-card-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.list-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.list-badge {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--accent-2);
+}
+.list-card-rename {
+  margin: 16px 18px 4px;
+  width: auto;
+  font-size: 15px;
+}
+.list-card-actions {
+  display: flex;
+  gap: 14px;
+  padding: 8px 18px 14px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.list-card-actions .link-btn:hover {
+  color: var(--accent);
 }
 
 /* Search */

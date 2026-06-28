@@ -28,7 +28,7 @@ import type {
   Item,
   ItemRecipes,
   RecipeVariant,
-} from "../src/engine/types.ts";
+} from "../src/tools/planner/engine/types.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CACHE = resolve(__dirname, ".cache");

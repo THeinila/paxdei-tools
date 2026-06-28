@@ -4,6 +4,7 @@
 import type { Target } from "../engine/planner.ts";
 
 export interface ListStateDef {
+  name: string;
   targets: Target[];
   pathChoices: Record<string, string>;
 }
