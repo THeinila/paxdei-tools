@@ -82,7 +82,8 @@ sudo mkdir -p /opt/pax-planner && sudo chown $USER /opt/pax-planner
 git clone <your repo URL> /opt/pax-planner
 cd /opt/pax-planner
 npm ci            # installs devDeps too (tsx is needed by `npm start`); builds better-sqlite3
-npm run build     # Vite -> dist/
+npm run fetch:icons   # downloads item icons into public/icons/ (gitignored build artifact, NOT in the repo)
+npm run build     # Vite -> dist/ (copies public/icons/ -> dist/icons/)
 mkdir -p /opt/pax-planner/data
 ```
 
@@ -114,10 +115,14 @@ now live at `https://<your-host>`.
 ## Updating later
 
 ```bash
-cd /opt/pax-planner && git pull && npm ci && npm run build && sudo systemctl restart pax-planner
+cd /opt/pax-planner && git pull && npm ci && npm run fetch:icons && npm run build && sudo systemctl restart pax-planner
 ```
 
 The SQLite file in `data/` is outside the checkout, so `git pull` never touches it.
+`fetch:icons` skips icons already present in `public/icons/`, so it only downloads
+new ones on subsequent updates. Icons are a gitignored build artifact (regenerated
+from the committed `data/dataset.json`), so this step is required on every host —
+without it `dist/icons/` is empty and all item images 404.
 
 ## Security notes
 
