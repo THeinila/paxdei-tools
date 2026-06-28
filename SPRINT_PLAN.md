@@ -6,6 +6,18 @@ tracks what's next. Grouped by priority; checkboxes are unstarted.
 
 ---
 
+## ✅ Done — Multi-tool restructure
+
+The webapp moved from a single SPA into a multi-tool suite. `react-router-dom`
+routing, a shared shell (`src/shell/AppShell.tsx` header/nav + footer, `Home.tsx`
+landing page), and a tool registry (`src/tools/registry.tsx`) that drives both the
+routes and the landing cards. The Crafting Planner now lives under
+`src/tools/planner/` and is reached at `/planner` (share links are
+`/planner?list=<token>`). New tools slot in as a registry entry + a component
+under `src/tools/<tool>/`, with backend routes namespaced under `/api/<tool>/…`.
+
+---
+
 ## ✅ Done — Sharing & Collaboration (completes the MVP)
 
 Shipped per the locked design (see `../.claude/plans/`): lightweight handle (no

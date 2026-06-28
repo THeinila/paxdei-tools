@@ -1,5 +1,5 @@
 /** Dataset access + small helpers shared across the UI. */
-import datasetJson from "../../data/dataset.json";
+import datasetJson from "../../../../data/dataset.json";
 import type { Dataset, Item } from "../engine/types.ts";
 import { localIconName } from "./iconName.ts";
 

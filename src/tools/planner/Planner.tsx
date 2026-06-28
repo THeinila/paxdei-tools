@@ -10,7 +10,7 @@ function tokenFromUrl(): string | null {
   return new URLSearchParams(window.location.search).get("list");
 }
 
-export default function App() {
+export default function Planner() {
   const [token, setToken] = useState<string | null>(tokenFromUrl);
   const { state, result, mode, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, clear } =
     useList(token);
@@ -64,12 +64,9 @@ export default function App() {
   }
 
   return (
-    <div className="app">
-      <header className="header">
-        <div>
-          <h1>Pax Dei Tools</h1>
-          <span className="subtitle">Crafting Planner</span>
-        </div>
+    <>
+      <div className="tool-header">
+        <h2 className="tool-title">Crafting Planner</h2>
         <div className="header-actions">
           {mode === "shared" && (
             <span className="share-badge">
@@ -83,7 +80,7 @@ export default function App() {
             {copied ? "Link copied!" : mode === "shared" ? "Copy link" : shareBusy ? "Sharing…" : "Share"}
           </button>
         </div>
-      </header>
+      </div>
 
       {mode === "shared" && error && <div className="warning">⚠ {error}</div>}
       {mode === "shared" && !ready ? (
@@ -136,10 +133,9 @@ export default function App() {
         </>
       )}
 
-      <footer className="footer">
-        Recipe data from paxdei.gaming.tools · inspired by FFXIV Teamcraft · fan project, not
-        affiliated with Mainframe
-      </footer>
-    </div>
+      <p className="tool-note">
+        Recipe data from paxdei.gaming.tools · inspired by FFXIV Teamcraft
+      </p>
+    </>
   );
 }
