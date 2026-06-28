@@ -35,19 +35,44 @@ function isFiniteNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
 
-/** Accept any shape but coerce to a well-formed definition so a malformed body
- * can never corrupt stored state. */
+// Bounds so a single request can't store an unbounded blob (the API is exposed).
+const MAX_TARGETS = 500;
+const MAX_PATH_CHOICES = 1000;
+const MAX_ID_LEN = 128;
+const MAX_HANDLE_LEN = 64;
+const MAX_QTY = 10_000_000;
+
+function isShortString(v: unknown, max: number): v is string {
+  return typeof v === "string" && v.length <= max;
+}
+
+/** Trim a handle to its max length, or null if absent/blank. */
+function cleanHandle(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.slice(0, MAX_HANDLE_LEN);
+  return t.length > 0 ? t : null;
+}
+
+/** Accept any shape but coerce to a well-formed, size-bounded definition so a
+ * malformed or oversized body can never corrupt or bloat stored state. */
 function sanitizeState(raw: unknown): ListStateDef {
   const obj = (raw ?? {}) as Record<string, unknown>;
   const targetsRaw = Array.isArray(obj.targets) ? obj.targets : [];
   const targets = targetsRaw
     .map((t) => t as Record<string, unknown>)
-    .filter((t) => typeof t.itemId === "string" && isFiniteNumber(t.quantity))
-    .map((t) => ({ itemId: t.itemId as string, quantity: t.quantity as number }));
+    .filter(
+      (t) =>
+        isShortString(t.itemId, MAX_ID_LEN) &&
+        isFiniteNumber(t.quantity) &&
+        t.quantity <= MAX_QTY,
+    )
+    .map((t) => ({ itemId: t.itemId as string, quantity: t.quantity as number }))
+    .slice(0, MAX_TARGETS);
   const pathChoicesRaw = (obj.pathChoices ?? {}) as Record<string, unknown>;
   const pathChoices: Record<string, string> = {};
   for (const [k, v] of Object.entries(pathChoicesRaw)) {
-    if (typeof v === "string") pathChoices[k] = v;
+    if (k.length <= MAX_ID_LEN && isShortString(v, MAX_ID_LEN)) pathChoices[k] = v;
+    if (Object.keys(pathChoices).length >= MAX_PATH_CHOICES) break;
   }
   return { targets, pathChoices };
 }
@@ -77,7 +102,7 @@ export function createListsRouter(db: DB) {
   app.post("/lists", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const state = sanitizeState(body.state);
-    const handle = typeof body.handle === "string" ? body.handle : null;
+    const handle = cleanHandle(body.handle);
     const owned = (body.owned ?? {}) as Record<string, unknown>;
     const token = newToken();
     const ts = now();
@@ -95,7 +120,8 @@ export function createListsRouter(db: DB) {
          VALUES (?, ?, ?, ?, ?)`,
       );
       for (const [itemId, qtyRaw] of Object.entries(owned)) {
-        const qty = Math.floor(Number(qtyRaw));
+        if (itemId.length > MAX_ID_LEN) continue;
+        const qty = Math.min(MAX_QTY, Math.floor(Number(qtyRaw)));
         if (Number.isFinite(qty) && qty > 0) seed.run(listId, itemId, qty, handle, ts);
       }
       return listId;
@@ -161,8 +187,8 @@ export function createListsRouter(db: DB) {
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
     const itemId = body.itemId;
     const delta = body.delta;
-    const handle = typeof body.handle === "string" ? body.handle : null;
-    if (typeof itemId !== "string" || !isFiniteNumber(delta)) {
+    const handle = cleanHandle(body.handle);
+    if (!isShortString(itemId, MAX_ID_LEN) || !isFiniteNumber(delta)) {
       return c.json({ error: "itemId and numeric delta required" }, 400);
     }
     const row = findList.get(token) as { id: number } | undefined;
@@ -178,7 +204,7 @@ export function createListsRouter(db: DB) {
       const cur = db
         .prepare(`SELECT qty FROM progress WHERE list_id = ? AND item_id = ?`)
         .get(listId, item) as { qty: number } | undefined;
-      const next = Math.max(0, (cur?.qty ?? 0) + d);
+      const next = Math.min(MAX_QTY, Math.max(0, (cur?.qty ?? 0) + d));
       db.prepare(
         `INSERT INTO progress (list_id, item_id, qty, by_handle, updated_at)
          VALUES (?, ?, ?, ?, ?)

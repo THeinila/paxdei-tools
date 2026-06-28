@@ -4,14 +4,23 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
+import { rateLimit } from "./rateLimit.ts";
 
 const db = openDb();
 const app = new Hono();
+
+// Hardening for the exposed (tunneled) API. State payloads are small, so cap the
+// body well under anything legitimate; rate-limit all writes, and throttle list
+// creation harder since it's the one unauthenticated endpoint that grows the DB.
+app.use("/api/*", bodyLimit({ maxSize: 64 * 1024 }));
+app.use("/api/*", rateLimit({ name: "api", limit: 120, windowMs: 60_000 }));
+app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_000 }));
 
 app.route("/api", createListsRouter(db));
 
@@ -25,6 +34,9 @@ if (existsSync(distDir)) {
 }
 
 const port = Number(process.env.PORT ?? 8787);
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`pax-planner API listening on http://localhost:${info.port}`);
+// Bind to loopback by default so only the local tunnel agent reaches the API,
+// never the LAN. Set HOST=0.0.0.0 to deliberately expose it on the network.
+const host = process.env.HOST ?? "127.0.0.1";
+serve({ fetch: app.fetch, port, hostname: host }, (info) => {
+  console.log(`pax-planner API listening on http://${host}:${info.port}`);
 });
