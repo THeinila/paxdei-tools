@@ -377,6 +377,96 @@ h2 {
   font-size: 12px;
 }
 
+/* Item label = icon + name, hover target for the recipe tooltip. Occupies the
+   same space the icon + .row-name pair used to, so row layout is unchanged. */
+.item-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  cursor: default;
+  outline: none;
+}
+.item-label:hover .row-name,
+.item-label:focus-visible .row-name {
+  color: var(--accent);
+}
+
+/* Recipe tooltip (portalled to body, positioned in JS) */
+.recipe-tooltip {
+  position: fixed;
+  z-index: 50;
+  max-width: 320px;
+  padding: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.rt-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.rt-name {
+  flex: 1;
+  font-weight: 600;
+}
+.rt-tier {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.rt-raw {
+  color: var(--muted);
+  font-size: 13px;
+}
+.rt-hint {
+  font-size: 12px;
+}
+.rt-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.rt-or {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  margin: 8px 0;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.rt-ings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rt-ing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.rt-ing-name {
+  flex: 1;
+  min-width: 0;
+}
+.rt-ing-qty {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 input[type="number"] {
   width: 64px;
   padding: 5px 6px;
