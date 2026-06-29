@@ -78,10 +78,18 @@ function fixture(): Dataset {
   };
 }
 
+// Maps cover only the still-needed steps; satisfied (fully-owned) rows are kept
+// in the plan but greyed in the UI, so they're excluded here for clarity.
 const gatherMap = (p: ReturnType<typeof plan>) =>
-  Object.fromEntries(p.gather.map((g) => [g.itemId, g.needed]));
+  Object.fromEntries(p.gather.filter((g) => !g.satisfied).map((g) => [g.itemId, g.needed]));
 const craftMap = (p: ReturnType<typeof plan>) =>
-  Object.fromEntries(p.crafts.map((c) => [c.itemId, { needed: c.needed, crafts: c.crafts }]));
+  Object.fromEntries(
+    p.crafts.filter((c) => !c.satisfied).map((c) => [c.itemId, { needed: c.needed, crafts: c.crafts }]),
+  );
+const satisfiedIds = (p: ReturnType<typeof plan>) => [
+  ...p.gather.filter((g) => g.satisfied).map((g) => g.itemId),
+  ...p.crafts.filter((c) => c.satisfied).map((c) => c.itemId),
+];
 
 // --- Tests -------------------------------------------------------------------
 
@@ -125,17 +133,19 @@ describe("plan", () => {
     expect(gatherMap(p)).toEqual({ wood: 12, iron_ore: 3 });
   });
 
-  it("subtracts owned stock at a raw leaf", () => {
+  it("keeps a fully-owned raw leaf as a satisfied (greyed) row", () => {
     const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { wood: 8 } });
-    expect(gatherMap(p).wood).toBeUndefined(); // fully covered
-    expect(gatherMap(p)).toEqual({ iron_ore: 2 });
+    expect(gatherMap(p)).toEqual({ iron_ore: 2 }); // wood no longer counts as to-gather
+    expect(satisfiedIds(p)).toContain("wood"); // but the row is retained, greyed
     expect(craftMap(p).plank).toEqual({ needed: 4, crafts: 4 }); // still must craft planks
   });
 
-  it("prunes a sub-tree when an intermediate is owned", () => {
+  it("keeps a fully-owned intermediate as satisfied but prunes its sub-tree", () => {
     const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { plank: 4 } });
-    expect(craftMap(p).plank).toBeUndefined(); // no need to craft planks
-    expect(gatherMap(p).wood).toBeUndefined(); // so no wood to gather
+    expect(craftMap(p).plank).toBeUndefined(); // no active plank craft
+    expect(satisfiedIds(p)).toContain("plank"); // kept as a greyed row
+    expect(gatherMap(p).wood).toBeUndefined(); // its inputs are pruned, not greyed
+    expect(satisfiedIds(p)).not.toContain("wood");
     expect(gatherMap(p)).toEqual({ iron_ore: 2 }); // nails still needed
   });
 

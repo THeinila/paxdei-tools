@@ -355,6 +355,14 @@ h2 {
 .row:first-child {
   border-top: none;
 }
+/* Fully covered by owned stock: keep the row visible but dim it. */
+.row.satisfied {
+  opacity: 0.45;
+}
+.row.satisfied .qty {
+  color: var(--muted);
+  text-decoration: line-through;
+}
 .row-name {
   flex: 1;
   min-width: 0;

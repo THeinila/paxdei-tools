@@ -18,22 +18,28 @@ export interface CraftStep {
    * direct ingredients tier 1, …). An item used at several depths takes its
    * deepest (max) tier so it appears once, above all its consumers. */
   tier: number;
-  /** Net units that must exist after this step (gross demand minus owned). */
+  /** Net units that must exist after this step (gross demand minus owned). For a
+   * satisfied step this is the gross demand, since owned already covers it. */
   needed: number;
-  /** Number of times the recipe is run (ceil(needed / yield)). */
+  /** Number of times the recipe is run (ceil(needed / yield)); 0 when satisfied. */
   crafts: number;
-  /** Units actually produced (crafts * yield); may exceed needed. */
+  /** Units actually produced (crafts * yield); may exceed needed. 0 when satisfied. */
   produced: number;
   yield: number;
   profession: string | null;
   recipeId: string;
   ingredients: { itemId: string; count: number }[];
+  /** Owned stock fully covers the gross demand: keep the row but grey it out, and
+   * don't propagate demand to its ingredients. */
+  satisfied: boolean;
 }
 
 /** A gather step: collect `needed` units of a raw material. */
 export interface GatherStep {
   itemId: string;
   needed: number;
+  /** Owned stock fully covers the gross demand: keep the row but grey it out. */
+  satisfied: boolean;
 }
 
 export interface Plan {
@@ -151,29 +157,36 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
 
   for (const id of order) {
     const grossNeed = gross.get(id) ?? 0;
+    // grossNeed is 0 only for items never actually demanded (e.g. ingredients of
+    // a satisfied parent, whose demand was never propagated): drop those entirely.
+    if (grossNeed <= 0) continue;
     const have = owned[id] ?? 0;
     const need = Math.max(0, grossNeed - have);
-    if (need <= 0) continue;
+    const satisfied = need <= 0;
 
     const variant = pickVariant(ds, id, pathChoices);
     if (!variant) {
-      gather.push({ itemId: id, needed: need });
+      gather.push({ itemId: id, needed: satisfied ? grossNeed : need, satisfied });
       continue;
     }
 
-    const batches = Math.ceil(need / variant.yield);
+    const batches = satisfied ? 0 : Math.ceil(need / variant.yield);
     const produced = batches * variant.yield;
     crafts.push({
       itemId: id,
       tier: depth.get(id) ?? 0,
-      needed: need,
+      needed: satisfied ? grossNeed : need,
       crafts: batches,
       produced,
       yield: variant.yield,
       profession: variant.profession,
       recipeId: variant.recipeId,
       ingredients: variant.ingredients,
+      satisfied,
     });
+    // A satisfied step is fully covered by owned stock, so its ingredients aren't
+    // needed: skip propagation so the sub-tree is pruned (not greyed).
+    if (satisfied) continue;
     for (const ing of variant.ingredients) {
       gross.set(ing.itemId, (gross.get(ing.itemId) ?? 0) + ing.count * batches);
     }

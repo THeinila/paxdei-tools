@@ -75,6 +75,8 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
       ),
     }));
   const totalCrafts = crafts.reduce((n, c) => n + c.crafts, 0);
+  const gatherLeft = gather.filter((g) => !g.satisfied).length;
+  const craftsLeft = crafts.filter((c) => !c.satisfied).length;
 
   return (
     <div className="plan">
@@ -86,7 +88,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
 
       <div className="summary">
         <span>
-          <b>{gather.length}</b> to gather
+          <b>{gatherLeft}</b> to gather
         </span>
         <span>
           <b>{totalCrafts}</b> craft{totalCrafts !== 1 ? "s" : ""} in <b>{tiers.length}</b>{" "}
@@ -96,13 +98,13 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
       </div>
 
       <section className="panel">
-        <h2>Gather ({gather.length})</h2>
+        <h2>Gather ({gatherLeft})</h2>
         {gather.length === 0 && <p className="hint">Nothing to gather.</p>}
         <ul className="rows">
           {gather.map((g) => {
             const item = getItem(g.itemId);
             return (
-              <li key={g.itemId} className="row">
+              <li key={g.itemId} className={g.satisfied ? "row satisfied" : "row"}>
                 <Icon item={item} />
                 <span className="row-name">{itemName(g.itemId)}</span>
                 <span className="qty">×{g.needed}</span>
@@ -120,7 +122,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
       </section>
 
       <section className="panel">
-        <h2>Craft ({crafts.length})</h2>
+        <h2>Craft ({craftsLeft})</h2>
         <p className="hint">By tier — craft top to bottom; final products are last.</p>
         {tiers.map((group) => (
           <div key={group.tier} className="prof-group">
@@ -132,14 +134,20 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
                 const item = getItem(c.itemId);
                 const variants = dataset.recipes[c.itemId]?.variants ?? [];
                 return (
-                  <li key={c.itemId} className="row">
+                  <li key={c.itemId} className={c.satisfied ? "row satisfied" : "row"}>
                     <Icon item={item} />
                     <span className="row-name">{itemName(c.itemId)}</span>
                     <span className="qty">×{c.needed}</span>
                     <span className="meta">
-                      {c.crafts} craft{c.crafts !== 1 ? "s" : ""}
-                      {c.produced !== c.needed ? ` → makes ${c.produced}` : ""}
-                      {c.profession ? ` · ${c.profession}` : ""}
+                      {c.satisfied ? (
+                        "have enough"
+                      ) : (
+                        <>
+                          {c.crafts} craft{c.crafts !== 1 ? "s" : ""}
+                          {c.produced !== c.needed ? ` → makes ${c.produced}` : ""}
+                          {c.profession ? ` · ${c.profession}` : ""}
+                        </>
+                      )}
                     </span>
                     {variants.length > 1 && (
                       <select
