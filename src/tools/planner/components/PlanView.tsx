@@ -1,7 +1,7 @@
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
 import type { ProgressMap } from "../lib/useList.ts";
-import { Icon } from "./Search.tsx";
+import { ItemLabel } from "./RecipeTooltip.tsx";
 
 interface Props {
   result: Plan;
@@ -105,8 +105,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
             const item = getItem(g.itemId);
             return (
               <li key={g.itemId} className={g.satisfied ? "row satisfied" : "row"}>
-                <Icon item={item} />
-                <span className="row-name">{itemName(g.itemId)}</span>
+                <ItemLabel itemId={g.itemId} />
                 <span className="qty">×{g.needed}</span>
                 <OwnedInput itemId={g.itemId} owned={owned} setOwned={setOwned} />
                 <By progress={progress} itemId={g.itemId} />
@@ -131,12 +130,10 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
             </h3>
             <ul className="rows">
               {group.steps.map((c) => {
-                const item = getItem(c.itemId);
                 const variants = dataset.recipes[c.itemId]?.variants ?? [];
                 return (
                   <li key={c.itemId} className={c.satisfied ? "row satisfied" : "row"}>
-                    <Icon item={item} />
-                    <span className="row-name">{itemName(c.itemId)}</span>
+                    <ItemLabel itemId={c.itemId} />
                     <span className="qty">×{c.needed}</span>
                     <span className="meta">
                       {c.satisfied ? (

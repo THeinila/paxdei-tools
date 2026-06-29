@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { Search, Icon } from "./components/Search.tsx";
+import { Search } from "./components/Search.tsx";
 import { PlanView } from "./components/PlanView.tsx";
-import { getItem, itemName } from "./lib/data.ts";
+import { ItemLabel } from "./components/RecipeTooltip.tsx";
 import { useList } from "./lib/useList.ts";
 import { createList } from "./lib/api.ts";
 import { ensureHandle, getHandle, promptHandle } from "./lib/handle.ts";
@@ -137,8 +137,7 @@ export default function Planner() {
               <ul className="rows">
                 {state.targets.map((t) => (
                   <li key={t.itemId} className="row">
-                    <Icon item={getItem(t.itemId)} />
-                    <span className="row-name">{itemName(t.itemId)}</span>
+                    <ItemLabel itemId={t.itemId} />
                     <input
                       className="target-qty"
                       type="number"
