@@ -10,7 +10,7 @@ export function getHandle(): string | null {
   }
 }
 
-export function setHandle(name: string): void {
+function setHandle(name: string): void {
   try {
     localStorage.setItem(KEY, name);
   } catch {
