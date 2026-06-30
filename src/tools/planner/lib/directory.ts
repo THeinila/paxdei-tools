@@ -61,7 +61,7 @@ export function getEntry(id: string): ListEntry | undefined {
   return listEntries().find((e) => e.id === id);
 }
 
-export function findEntryByToken(token: string): ListEntry | undefined {
+function findEntryByToken(token: string): ListEntry | undefined {
   return listEntries().find((e) => e.shareToken === token);
 }
 
