@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Search } from "./components/Search.tsx";
 import { PlanView } from "./components/PlanView.tsx";
-import { ItemLabel } from "./components/RecipeTooltip.tsx";
+import { Row } from "./components/Row.tsx";
 import { useList } from "./lib/useList.ts";
 import { createList } from "./lib/api.ts";
 import { ensureHandle, getHandle, promptHandle } from "./lib/handle.ts";
@@ -136,8 +136,7 @@ export default function Planner() {
             ) : (
               <ul className="rows">
                 {state.targets.map((t) => (
-                  <li key={t.itemId} className="row">
-                    <ItemLabel itemId={t.itemId} />
+                  <Row key={t.itemId} itemId={t.itemId}>
                     <input
                       className="target-qty"
                       type="number"
@@ -148,7 +147,7 @@ export default function Planner() {
                     <button className="link-btn" onClick={() => setTargetQty(t.itemId, 0)}>
                       remove
                     </button>
-                  </li>
+                  </Row>
                 ))}
               </ul>
             )}
