@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import { Icon } from "./Search.tsx";
@@ -17,18 +17,34 @@ export function ItemLabel({
 }) {
   const item = getItem(itemId);
   const ref = useRef<HTMLDivElement>(null);
+  const lastPointer = useRef<string>("mouse");
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const show = () => ref.current && setAnchor(ref.current.getBoundingClientRect());
   const hide = () => setAnchor(null);
+
+  // Touch has no hover, so a tap toggles the card. We key hover to the mouse
+  // pointer type and the toggle to touch/pen, so the two don't fight (a tap
+  // that also synthesises a mouseenter must not immediately re-close the card).
+  useEffect(() => {
+    if (!anchor) return;
+    const onDocPointerDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) hide();
+    };
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, [anchor]);
+
   return (
     <div
       className="item-label"
       ref={ref}
       tabIndex={0}
-      onMouseEnter={show}
-      onMouseLeave={hide}
+      onPointerDown={(e) => (lastPointer.current = e.pointerType)}
+      onPointerEnter={(e) => e.pointerType === "mouse" && show()}
+      onPointerLeave={(e) => e.pointerType === "mouse" && hide()}
       onFocus={show}
       onBlur={hide}
+      onClick={() => lastPointer.current !== "mouse" && setAnchor((a) => (a ? null : ref.current!.getBoundingClientRect()))}
     >
       <Icon item={item} />
       <span className={nameClassName}>{itemName(itemId)}</span>

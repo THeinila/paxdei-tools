@@ -1,7 +1,7 @@
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
 import type { ProgressMap } from "../lib/useList.ts";
-import { ItemLabel } from "./RecipeTooltip.tsx";
+import { Row } from "./Row.tsx";
 
 interface Props {
   result: Plan;
@@ -104,9 +104,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
           {gather.map((g) => {
             const item = getItem(g.itemId);
             return (
-              <li key={g.itemId} className={g.satisfied ? "row satisfied" : "row"}>
-                <ItemLabel itemId={g.itemId} />
-                <span className="qty">×{g.needed}</span>
+              <Row key={g.itemId} itemId={g.itemId} qty={g.needed} satisfied={g.satisfied}>
                 <OwnedInput itemId={g.itemId} owned={owned} setOwned={setOwned} />
                 <By progress={progress} itemId={g.itemId} />
                 {sourceUrl(item) && (
@@ -114,7 +112,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
                     where?
                   </a>
                 )}
-              </li>
+              </Row>
             );
           })}
         </ul>
@@ -132,9 +130,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
               {group.steps.map((c) => {
                 const variants = dataset.recipes[c.itemId]?.variants ?? [];
                 return (
-                  <li key={c.itemId} className={c.satisfied ? "row satisfied" : "row"}>
-                    <ItemLabel itemId={c.itemId} />
-                    <span className="qty">×{c.needed}</span>
+                  <Row key={c.itemId} itemId={c.itemId} qty={c.needed} satisfied={c.satisfied}>
                     <span className="meta">
                       {c.satisfied ? (
                         "have enough"
@@ -161,7 +157,7 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
                     )}
                     <OwnedInput itemId={c.itemId} owned={owned} setOwned={setOwned} />
                     <By progress={progress} itemId={c.itemId} />
-                  </li>
+                  </Row>
                 );
               })}
             </ul>
