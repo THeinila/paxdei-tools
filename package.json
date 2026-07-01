@@ -1,6 +1,6 @@
 {
   "name": "pax-planner",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "FFXIV Teamcraft-style crafting & gathering planner for Pax Dei",

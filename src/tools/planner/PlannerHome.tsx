@@ -16,6 +16,7 @@ import {
   type ListEntry,
 } from "./lib/directory.ts";
 import { getList } from "./lib/api.ts";
+import { tools } from "../registry.tsx";
 
 function relativeTime(iso: string): string {
   const then = new Date(iso).getTime();
@@ -31,6 +32,10 @@ function relativeTime(iso: string): string {
 }
 
 export default function PlannerHome() {
+  // Looked up at render time (not module load) to avoid using the registry's `tools`
+  // export before it initializes — registry.tsx imports this component, so the two
+  // modules form a cycle.
+  const plannerVersion = tools.find((t) => t.id === "planner")?.version;
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [entries, setEntries] = useState<ListEntry[]>(() => listEntries());
@@ -104,7 +109,10 @@ export default function PlannerHome() {
   return (
     <>
       <div className="tool-header">
-        <h2 className="tool-title">Crafting Planner</h2>
+        <h2 className="tool-title">
+          Crafting Planner{" "}
+          {plannerVersion && <span className="tool-version">v{plannerVersion}</span>}
+        </h2>
         <div className="header-actions">
           <button className="share-btn" onClick={onCreate}>
             + Create a new list

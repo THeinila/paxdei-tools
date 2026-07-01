@@ -14,6 +14,9 @@ export interface Tool {
   path: string;
   /** One-line description shown on the landing card and nav. */
   blurb: string;
+  /** The tool's own semver, bumped only when this tool changes (independent of the
+   * toolkit/release-train version in package.json). Shown as a badge in the UI. */
+  version: string;
   status: "live" | "soon";
   /** The routed element. Present only for live tools. */
   element?: ReactElement;
@@ -30,6 +33,7 @@ export const tools: Tool[] = [
       "Search items, build a crafting list, and get a flattened plan of every raw " +
       "material to gather and intermediate to craft — with owned stock subtracted. " +
       "Share a link to divide the work with your group.",
+    version: "1.0.0",
     status: "live",
     element: <PlannerHome />,
     children: [{ path: ":listId", element: <Planner /> }],
