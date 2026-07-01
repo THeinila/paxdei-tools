@@ -93,7 +93,17 @@ affiliated with Mainframe Industries.
 
 ## Status
 
-MVP is complete: the single-user planner plus sharing & collaboration (lightweight
-handles, share links, progress check-off, near-real-time polling) on a local
-Node + SQLite backend. See [SPRINT_PLAN.md](SPRINT_PLAN.md) for the backlog of
-upcoming features and ideas.
+**v1.0** — the single-user planner plus sharing & collaboration (lightweight handles,
+share links, progress check-off, near-real-time polling) on a local Node + SQLite
+backend. See [SPRINT_PLAN.md](SPRINT_PLAN.md) for the backlog of upcoming features.
+
+## Versioning
+
+The suite carries two independent versions: a **toolkit** release-train version
+(`package.json`, shown in the footer and git-tagged) and a **per-tool** version (in
+`src/tools/registry.tsx`, shown as a badge on each tool).
+
+Release history lives in two places for two audiences: [CHANGELOG.md](CHANGELOG.md) is
+the technical record, while `src/shell/releases.ts` drives the plain-language **What's
+New** page users see in the app. See [RELEASING.md](RELEASING.md) for how releases are
+cut and how to keep both in sync.

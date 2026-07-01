@@ -21,6 +21,12 @@ export default function AppShell() {
               {t.name}
             </NavLink>
           ))}
+          <NavLink
+            to="/whats-new"
+            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
+          >
+            What's New
+          </NavLink>
         </nav>
       </header>
 
@@ -29,7 +35,10 @@ export default function AppShell() {
       </main>
 
       <footer className="footer">
-        Fan project · not affiliated with Mainframe Industries
+        Fan project · not affiliated with Mainframe Industries ·{" "}
+        <Link to="/whats-new" className="footer-version" title="What's new">
+          v{__APP_VERSION__}
+        </Link>
       </footer>
     </div>
   );

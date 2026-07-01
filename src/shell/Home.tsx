@@ -12,7 +12,9 @@ export default function Home() {
       <div className="tool-grid">
         {liveTools.map((t) => (
           <Link key={t.id} to={t.path} className="tool-card">
-            <h2>{t.name}</h2>
+            <h2>
+              {t.name} <span className="tool-version">v{t.version}</span>
+            </h2>
             <p>{t.blurb}</p>
           </Link>
         ))}
