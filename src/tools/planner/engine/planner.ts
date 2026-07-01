@@ -82,7 +82,8 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
 
   // 1. Discover the reachable sub-graph (only along chosen variants) and the
   //    "consumes" edges, so we can process each item after all its consumers.
-  const gross = new Map<string, number>(); // accumulated gross demand
+  const gross = new Map<string, number>(); // full bill-of-materials demand (owned-agnostic)
+  const active = new Map<string, number>(); // demand that still needs doing (owned subtracted)
   const consumers = new Map<string, Set<string>>(); // item -> items that consume it
   const nodes = new Set<string>();
 
@@ -149,19 +150,28 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
     }
   }
 
-  // 4. Propagate demand along the topo order, subtracting owned at each node.
-  for (const t of targets) gross.set(t.itemId, (gross.get(t.itemId) ?? 0) + t.quantity);
+  // 4. Propagate demand along the topo order. Two quantities per node:
+  //    - gross: the full bill of materials, ignoring owned stock. Always flows
+  //      down so every reachable node has a quantity to display.
+  //    - active: the demand that still needs doing — it flows only through steps
+  //      not already covered by owned stock, and owned is subtracted at each node.
+  //    A node whose active demand is fully covered is `satisfied` (greyed). It
+  //    keeps its row but stops propagating active demand, so its whole sub-tree
+  //    inherits zero active demand and greys out too (rather than disappearing).
+  for (const t of targets) {
+    gross.set(t.itemId, (gross.get(t.itemId) ?? 0) + t.quantity);
+    active.set(t.itemId, (active.get(t.itemId) ?? 0) + t.quantity);
+  }
 
   const crafts: CraftStep[] = [];
   const gather: GatherStep[] = [];
 
   for (const id of order) {
     const grossNeed = gross.get(id) ?? 0;
-    // grossNeed is 0 only for items never actually demanded (e.g. ingredients of
-    // a satisfied parent, whose demand was never propagated): drop those entirely.
-    if (grossNeed <= 0) continue;
+    if (grossNeed <= 0) continue; // never demanded at all
+    const activeNeed = active.get(id) ?? 0;
     const have = owned[id] ?? 0;
-    const need = Math.max(0, grossNeed - have);
+    const need = Math.max(0, activeNeed - have);
     const satisfied = need <= 0;
 
     const variant = pickVariant(ds, id, pathChoices);
@@ -184,11 +194,14 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
       ingredients: variant.ingredients,
       satisfied,
     });
-    // A satisfied step is fully covered by owned stock, so its ingredients aren't
-    // needed: skip propagation so the sub-tree is pruned (not greyed).
-    if (satisfied) continue;
+    // Full BOM always flows down so a greyed sub-tree still shows quantities;
+    // active demand flows only while this step is actually being crafted.
+    const grossBatches = Math.ceil(grossNeed / variant.yield);
     for (const ing of variant.ingredients) {
-      gross.set(ing.itemId, (gross.get(ing.itemId) ?? 0) + ing.count * batches);
+      gross.set(ing.itemId, (gross.get(ing.itemId) ?? 0) + ing.count * grossBatches);
+      if (!satisfied) {
+        active.set(ing.itemId, (active.get(ing.itemId) ?? 0) + ing.count * batches);
+      }
     }
   }
 
