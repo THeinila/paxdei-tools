@@ -140,12 +140,15 @@ describe("plan", () => {
     expect(craftMap(p).plank).toEqual({ needed: 4, crafts: 4 }); // still must craft planks
   });
 
-  it("keeps a fully-owned intermediate as satisfied but prunes its sub-tree", () => {
+  it("keeps a fully-owned intermediate and its whole sub-tree as satisfied", () => {
     const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { plank: 4 } });
     expect(craftMap(p).plank).toBeUndefined(); // no active plank craft
     expect(satisfiedIds(p)).toContain("plank"); // kept as a greyed row
-    expect(gatherMap(p).wood).toBeUndefined(); // its inputs are pruned, not greyed
-    expect(satisfiedIds(p)).not.toContain("wood");
+    // The plank's inputs stay as greyed rows too (not deleted), showing the
+    // quantity you'd have needed had you not already had the plank.
+    expect(gatherMap(p).wood).toBeUndefined(); // not an active gather
+    expect(satisfiedIds(p)).toContain("wood");
+    expect(p.gather.find((g) => g.itemId === "wood")).toMatchObject({ needed: 8, satisfied: true });
     expect(gatherMap(p)).toEqual({ iron_ore: 2 }); // nails still needed
   });
 
