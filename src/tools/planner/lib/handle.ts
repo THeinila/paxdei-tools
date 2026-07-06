@@ -1,21 +1,15 @@
 /** The collaborator's display name ("handle"). No real auth — the handle is
  * just attribution attached to every progress write. Stored locally. */
+import { readKey, writeKey } from "./storage.ts";
+
 const KEY = "paxdei-planner:handle:v1";
 
 export function getHandle(): string | null {
-  try {
-    return localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
+  return readKey(KEY);
 }
 
 function setHandle(name: string): void {
-  try {
-    localStorage.setItem(KEY, name);
-  } catch {
-    /* ignore */
-  }
+  writeKey(KEY, name);
 }
 
 /** Return the stored handle, or prompt for one and store it. Returns null if the

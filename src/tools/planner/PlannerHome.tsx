@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  DEFAULT_NAME,
   createLocal,
   deleteEntry,
   duplicate,
@@ -68,7 +69,7 @@ export default function PlannerHome() {
   }
 
   function commitRename(id: string) {
-    const name = draftName.trim() || "Untitled";
+    const name = draftName.trim() || DEFAULT_NAME;
     updateEntry(id, { name });
     // Keep the local content's name in sync; shared lists rename inside the editor.
     const entry = listEntries().find((e) => e.id === id);
@@ -140,7 +141,7 @@ export default function PlannerHome() {
                 />
               ) : (
                 <button className="list-card-open" onClick={() => navigate(`/planner/${entry.id}`)}>
-                  <span className="list-card-name">{entry.name || "Untitled"}</span>
+                  <span className="list-card-name">{entry.name || DEFAULT_NAME}</span>
                   <span className="list-card-meta">
                     {entry.kind === "shared" && <span className="list-badge">shared</span>}
                     {entry.targetCount} item{entry.targetCount === 1 ? "" : "s"} · {relativeTime(entry.updatedAt)}

@@ -6,7 +6,7 @@ import { Row } from "./components/Row.tsx";
 import { useList } from "./lib/useList.ts";
 import { createList } from "./lib/api.ts";
 import { ensureHandle, getHandle, promptHandle } from "./lib/handle.ts";
-import { getEntry, updateEntry } from "./lib/directory.ts";
+import { DEFAULT_NAME, getEntry, updateEntry } from "./lib/directory.ts";
 
 export default function Planner() {
   const { listId = "" } = useParams();
@@ -28,13 +28,13 @@ export default function Planner() {
   // overwrite its cached name/count with the empty pre-poll/failed state.
   useEffect(() => {
     if (!entry || !ready || (mode === "shared" && error)) return;
-    updateEntry(listId, { name: state.name || "Untitled", targetCount: state.targets.length });
+    updateEntry(listId, { name: state.name || DEFAULT_NAME, targetCount: state.targets.length });
   }, [entry, ready, mode, error, listId, state.name, state.targets.length]);
 
   if (!entry) return <Navigate to="/planner" replace />;
 
   function commitTitle() {
-    const name = titleDraft.trim() || "Untitled";
+    const name = titleDraft.trim() || DEFAULT_NAME;
     if (name !== state.name) setName(name);
     setTitleDraft(name);
   }
@@ -93,7 +93,7 @@ export default function Planner() {
         <input
           className="tool-title-input"
           value={titleDraft}
-          placeholder="Untitled"
+          placeholder={DEFAULT_NAME}
           onChange={(e) => setTitleDraft(e.target.value)}
           onBlur={commitTitle}
           onKeyDown={(e) => {
@@ -142,7 +142,7 @@ export default function Planner() {
                       type="number"
                       min={0}
                       value={t.quantity}
-                      onChange={(e) => setTargetQty(t.itemId, Math.max(0, Number(e.target.value) || 0))}
+                      onChange={(e) => setTargetQty(t.itemId, Math.max(0, Math.floor(Number(e.target.value) || 0)))}
                     />
                     <button className="link-btn" onClick={() => setTargetQty(t.itemId, 0)}>
                       remove

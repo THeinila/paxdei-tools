@@ -8,14 +8,14 @@
 import { Hono } from "hono";
 import { randomBytes } from "node:crypto";
 import type { DB } from "./db.ts";
+import type { ListStateDef } from "../shared/listTypes.ts";
 
-/** The collaboratively-editable definition of a list. "Owned" stock is NOT here
- * — it has merged into the per-item progress map (see server/db.ts progress).
- * `name` is the shared list title so every collaborator sees the same label. */
-interface ListStateDef {
-  name: string;
-  targets: { itemId: string; quantity: number }[];
-  pathChoices: Record<string, string>;
+/** A row from the lists table (state is the JSON-encoded ListStateDef). */
+interface ListRow {
+  id: number;
+  version: number;
+  state: string;
+  updated_at: string;
 }
 
 interface ProgressRow {
@@ -64,13 +64,9 @@ function sanitizeState(raw: unknown): ListStateDef {
   const targetsRaw = Array.isArray(obj.targets) ? obj.targets : [];
   const targets = targetsRaw
     .map((t) => t as Record<string, unknown>)
-    .filter(
-      (t) =>
-        isShortString(t.itemId, MAX_ID_LEN) &&
-        isFiniteNumber(t.quantity) &&
-        t.quantity <= MAX_QTY,
-    )
-    .map((t) => ({ itemId: t.itemId as string, quantity: t.quantity as number }))
+    .filter((t) => isShortString(t.itemId, MAX_ID_LEN) && isFiniteNumber(t.quantity))
+    .map((t) => ({ itemId: t.itemId as string, quantity: Math.floor(t.quantity as number) }))
+    .filter((t) => t.quantity >= 1 && t.quantity <= MAX_QTY)
     .slice(0, MAX_TARGETS);
   const pathChoicesRaw = (obj.pathChoices ?? {}) as Record<string, unknown>;
   const pathChoices: Record<string, string> = {};
@@ -140,9 +136,7 @@ export function createListsRouter(db: DB) {
 
   // Poll endpoint: full list + progress snapshot.
   app.get("/lists/:token", (c) => {
-    const row = findList.get(c.req.param("token")) as
-      | { id: number; version: number; state: string; updated_at: string }
-      | undefined;
+    const row = findList.get(c.req.param("token")) as ListRow | undefined;
     if (!row) return c.json({ error: "not found" }, 404);
     return c.json({
       version: row.version,
@@ -168,9 +162,7 @@ export function createListsRouter(db: DB) {
       )
       .run(JSON.stringify(state), ts, token, body.baseVersion);
 
-    const row = findList.get(token) as
-      | { id: number; version: number; state: string; updated_at: string }
-      | undefined;
+    const row = findList.get(token) as ListRow | undefined;
     if (!row) return c.json({ error: "not found" }, 404);
 
     // changes === 0 with an existing row means the baseVersion was stale.
@@ -195,7 +187,7 @@ export function createListsRouter(db: DB) {
     if (!isShortString(itemId, MAX_ID_LEN) || !isFiniteNumber(delta)) {
       return c.json({ error: "itemId and numeric delta required" }, 400);
     }
-    const row = findList.get(token) as { id: number } | undefined;
+    const row = findList.get(token) as ListRow | undefined;
     if (!row) return c.json({ error: "not found" }, 404);
     const ts = now();
     const d = Math.trunc(delta);

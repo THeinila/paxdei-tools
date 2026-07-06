@@ -131,9 +131,10 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
   }
   if (order.length < nodes.size) {
     warnings.push(
-      "Recipe cycle detected; some items were treated as raw to break the loop.",
+      "Recipe cycle detected; the steps involved may be listed in arbitrary order.",
     );
-    for (const id of nodes) if (!order.includes(id)) order.push(id);
+    const placed = new Set(order);
+    for (const id of nodes) if (!placed.has(id)) order.push(id);
   }
 
   // 3. Tier = longest dependency distance from a final product. `order` visits
