@@ -8,10 +8,15 @@ import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
+import { createStatsRouter, visitorTracking } from "./metrics.ts";
 import { rateLimit } from "./rateLimit.ts";
 
 const db = openDb();
 const app = new Hono();
+
+// Anonymous usage metrics (unique visitors + event counters, server-side only;
+// see server/metrics.ts). First so even rate-limited requests count as a visit.
+app.use("*", visitorTracking(db));
 
 // Hardening for the exposed (tunneled) API. State payloads are small, so cap the
 // body well under anything legitimate; rate-limit all writes, and throttle list
@@ -24,6 +29,10 @@ app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_
 // router under its own namespace (e.g. app.route("/api/<tool>", ...)) so routes
 // never collide; these planner routes predate that convention and keep /api/lists.
 app.route("/api", createListsRouter(db));
+
+// Aggregate stats, only served when STATS_TOKEN is configured:
+//   curl -H "Authorization: Bearer $STATS_TOKEN" https://<host>/api/stats
+app.route("/api", createStatsRouter(db, { token: process.env.STATS_TOKEN }));
 
 // Serve the production build when present (no-op in dev, where Vite serves it).
 // Paths are cwd-relative to match serveStatic; npm scripts and the systemd unit

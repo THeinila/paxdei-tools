@@ -12,7 +12,10 @@ interface Window {
   resetAt: number;
 }
 
-function clientKey(c: Context): string {
+/** Best-effort client identity: first XFF entry (the tunnel/proxy sets it), or
+ * a single shared bucket when absent. Also used by server/metrics.ts so rate
+ * limiting and visitor counting agree on what "one client" means. */
+export function clientKey(c: Context): string {
   const xff = c.req.header("x-forwarded-for");
   if (xff) {
     // XFF is a comma-separated list; the first entry is the original client.

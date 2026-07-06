@@ -10,6 +10,9 @@ Environment=PORT=8787
 Environment=HOST=127.0.0.1
 # Persist the SQLite file outside the git checkout so `git pull` never touches it.
 Environment=DB_PATH=/opt/pax-planner/data/data.sqlite
+# Uncomment (with your own random secret) to enable GET /api/stats — anonymous
+# aggregate usage metrics (see server/metrics.ts). Left unset, the route 404s.
+#Environment=STATS_TOKEN=change-me
 Restart=always
 RestartSec=2
 User=ubuntu
