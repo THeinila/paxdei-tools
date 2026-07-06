@@ -43,9 +43,12 @@ To use sharing, run the frontend and the share backend together:
 npm run dev:all   # Vite (5173) + share API (8787); Vite proxies /api to the API
 ```
 
-`npm run data` regenerates the gitignored build artifacts:
-- `data/dataset.json` — normalized items + recipes (committed)
-- `public/icons/` — item icons (gitignored; regenerate with `npm run fetch:icons`)
+`npm run data` regenerates the data artifacts:
+- `data/dataset.json` — normalized items + recipes (**committed**; generated, never hand-edited)
+- `public/icons/` — item icons (gitignored build artifact; regenerate with `npm run fetch:icons`)
+
+See [scripts/README.md](scripts/README.md) for the pipeline details, the
+normalization rules, and how to update or curate the game data.
 
 ## Scripts
 
@@ -85,7 +88,8 @@ landing page; each tool is a self-contained module under `src/tools/<tool>/`.
   list-definition edits are version-guarded (optimistic concurrency → 409 + rebase).
   The planner's routes live under `/api/lists*`; future tools mount their own
   routers under `/api/<tool>/…`.
-- **`scripts/`** — one-time data pipeline.
+- **`scripts/`** — re-runnable data pipeline (fetch → normalize → icons); see
+  [scripts/README.md](scripts/README.md).
 
 Recipe data is sourced from [paxdei.gaming.tools](https://paxdei.gaming.tools/)
 (a single devalue-encoded `recipes.d.json` on their CDN). Fan project; not
