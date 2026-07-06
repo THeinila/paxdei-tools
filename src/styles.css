@@ -383,6 +383,20 @@ body {
   border-radius: 6px;
   color: var(--text);
 }
+/* "No items match" dropdown panel, shown in place of .search-results. */
+.empty {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: var(--muted);
+  font-size: 14px;
+}
 .add-btn {
   width: 26px;
   height: 26px;

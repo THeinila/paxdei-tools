@@ -1,20 +1,9 @@
 /** Typed fetch wrappers for the sharing backend. Same-origin (/api is proxied
  * to the backend in dev, served by it in prod). 409 conflicts on PATCH are
  * surfaced distinctly so callers can rebase on the returned current state. */
-import type { Target } from "../engine/planner.ts";
+import type { ListStateDef, ProgressEntry } from "../../../../shared/listTypes.ts";
 
-export interface ListStateDef {
-  name: string;
-  targets: Target[];
-  pathChoices: Record<string, string>;
-}
-
-export interface ProgressEntry {
-  itemId: string;
-  qty: number;
-  byHandle: string | null;
-  updatedAt: string;
-}
+export type { ListStateDef, ProgressEntry };
 
 export interface ListSnapshot {
   version: number;
@@ -34,10 +23,6 @@ export class VersionConflict extends Error {
     super("version conflict");
     this.name = "VersionConflict";
   }
-}
-
-async function asJson(res: Response): Promise<unknown> {
-  return res.json().catch(() => ({}));
 }
 
 export async function createList(
@@ -72,7 +57,10 @@ export async function patchList(
     body: JSON.stringify({ state, baseVersion }),
   });
   if (res.status === 409) {
-    throw new VersionConflict((await asJson(res)) as ListSnapshot);
+    // If the conflict body doesn't parse, let that throw into the normal error
+    // path — a VersionConflict without a usable `current` would corrupt the
+    // caller's rebase.
+    throw new VersionConflict((await res.json()) as ListSnapshot);
   }
   if (!res.ok) throw new Error(`patchList failed: ${res.status}`);
   return (await res.json()) as ListSnapshot;

@@ -6,8 +6,6 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
 import { rateLimit } from "./rateLimit.ts";
@@ -28,9 +26,9 @@ app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_
 app.route("/api", createListsRouter(db));
 
 // Serve the production build when present (no-op in dev, where Vite serves it).
-const here = dirname(fileURLToPath(import.meta.url));
-const distDir = join(here, "..", "dist");
-if (existsSync(distDir)) {
+// Paths are cwd-relative to match serveStatic; npm scripts and the systemd unit
+// (WorkingDirectory=) both run from the repo root.
+if (existsSync("./dist")) {
   app.use("/*", serveStatic({ root: "./dist" }));
   // SPA fallback so deep links (e.g. ?list=token) resolve to index.html.
   app.get("*", serveStatic({ path: "./dist/index.html" }));

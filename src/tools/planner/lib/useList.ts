@@ -4,8 +4,9 @@
  *    as the single-user MVP worked.
  *  - Shared (token set): the list lives server-side. The definition
  *    (targets + pathChoices) is edited with version-guarded PATCHes; the per-item
- *    "have" map is collaborative progress written as atomic additive deltas and
- *    fed straight into the engine as `owned`. Clients poll every few seconds.
+ *    "have" map is collaborative progress written as atomic additive deltas.
+ *    `owned` is DERIVED from the progress map (never stored separately), so the
+ *    two can't drift. Clients poll every few seconds.
  *
  * The public surface stays source-compatible with the local MVP — `owned` and
  * `setOwned` carry the have-map in both modes — so PlanView/App need only minor
@@ -122,20 +123,15 @@ export function useList(id: string, token: string | null): UseList {
   const applySnapshot = useCallback(
     (snap: { version: number; state: ListStateDef; progress: ProgressEntry[] }, adoptDef: boolean) => {
       versionRef.current = snap.version;
-      const progMap = indexProgress(snap.progress);
-      setProgress(progMap);
-      if (adoptDef)
+      setProgress(indexProgress(snap.progress));
+      if (adoptDef) {
         defRef.current = {
           name: snap.state.name,
           targets: snap.state.targets,
           pathChoices: snap.state.pathChoices,
         };
-      setState((s) => ({
-        name: adoptDef ? snap.state.name : s.name,
-        targets: adoptDef ? snap.state.targets : s.targets,
-        pathChoices: adoptDef ? snap.state.pathChoices : s.pathChoices,
-        owned: progressToOwned(progMap),
-      }));
+        setState((s) => ({ ...s, ...defRef.current }));
+      }
     },
     [],
   );
@@ -260,12 +256,10 @@ export function useList(id: string, token: string | null): UseList {
         updatedAt: new Date().toISOString(),
       };
       setProgress((p) => ({ ...p, [itemId]: optimistic }));
-      setState((s) => ({ ...s, owned: progressToOwned({ ...progress, [itemId]: optimistic }) }));
       void (async () => {
         try {
           const saved = await postProgress(token, itemId, delta, handle);
           setProgress((p) => ({ ...p, [itemId]: saved }));
-          setState((s) => ({ ...s, owned: progressToOwned({ ...progress, [itemId]: saved }) }));
         } catch (e) {
           setError(e instanceof Error ? e.message : "failed to save progress");
         }
@@ -274,13 +268,25 @@ export function useList(id: string, token: string | null): UseList {
     [token, progress],
   );
 
+  // In shared mode `owned` is a pure projection of the progress map; local mode
+  // keeps its own owned in state.
+  const owned = useMemo(
+    () => (token ? progressToOwned(progress) : state.owned),
+    [token, progress, state.owned],
+  );
+
   const result = useMemo(
-    () => plan(dataset, state.targets, { owned: state.owned, pathChoices: state.pathChoices }),
-    [state],
+    () => plan(dataset, state.targets, { owned, pathChoices: state.pathChoices }),
+    [state.targets, state.pathChoices, owned],
+  );
+
+  const exposedState = useMemo(
+    () => (token ? { ...state, owned } : state),
+    [token, state, owned],
   );
 
   return {
-    state,
+    state: exposedState,
     result,
     mode,
     progress,

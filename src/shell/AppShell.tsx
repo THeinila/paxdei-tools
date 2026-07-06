@@ -2,7 +2,7 @@
  * footer (site-wide disclaimer). The routed tool renders into <Outlet/>. Tool-
  * specific actions (e.g. the planner's Share button) live inside the tool, not here. */
 import { NavLink, Link, Outlet } from "react-router-dom";
-import { liveTools } from "../tools/registry.tsx";
+import { tools } from "../tools/registry.tsx";
 
 export default function AppShell() {
   return (
@@ -12,7 +12,7 @@ export default function AppShell() {
           Pax Dei Tools
         </Link>
         <nav className="site-nav">
-          {liveTools.map((t) => (
+          {tools.map((t) => (
             <NavLink
               key={t.id}
               to={t.path}

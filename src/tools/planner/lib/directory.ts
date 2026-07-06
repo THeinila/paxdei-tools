@@ -6,6 +6,7 @@
  * content lives server-side (the entry only keeps its share token + cached
  * name/count). A local list that gets shared keeps its `id` and flips `kind`. */
 import type { ListState } from "./useList.ts";
+import { readKey, removeKey, writeKey } from "./storage.ts";
 
 const INDEX_KEY = "paxdei-planner:lists:v1";
 const CONTENT_PREFIX = "paxdei-planner:list:";
@@ -39,9 +40,9 @@ function contentKey(id: string): string {
 // --- Index -------------------------------------------------------------------
 
 export function listEntries(): ListEntry[] {
+  const raw = readKey(INDEX_KEY);
+  if (!raw) return [];
   try {
-    const raw = localStorage.getItem(INDEX_KEY);
-    if (!raw) return [];
     const arr = JSON.parse(raw) as ListEntry[];
     return Array.isArray(arr) ? arr : [];
   } catch {
@@ -50,11 +51,7 @@ export function listEntries(): ListEntry[] {
 }
 
 function saveIndex(entries: ListEntry[]): void {
-  try {
-    localStorage.setItem(INDEX_KEY, JSON.stringify(entries));
-  } catch {
-    /* ignore */
-  }
+  writeKey(INDEX_KEY, JSON.stringify(entries));
 }
 
 export function getEntry(id: string): ListEntry | undefined {
@@ -86,29 +83,23 @@ export function updateEntry(id: string, patch: Partial<Omit<ListEntry, "id">>): 
 // --- Content (local lists only) ----------------------------------------------
 
 export function loadContent(id: string): ListState {
-  try {
-    const raw = localStorage.getItem(contentKey(id));
-    if (raw) return { ...EMPTY_CONTENT, ...(JSON.parse(raw) as ListState) };
-  } catch {
-    /* ignore */
+  const raw = readKey(contentKey(id));
+  if (raw) {
+    try {
+      return { ...EMPTY_CONTENT, ...(JSON.parse(raw) as ListState) };
+    } catch {
+      /* corrupt content: fall through to empty */
+    }
   }
   return { ...EMPTY_CONTENT };
 }
 
 export function saveContent(id: string, state: ListState): void {
-  try {
-    localStorage.setItem(contentKey(id), JSON.stringify(state));
-  } catch {
-    /* ignore */
-  }
+  writeKey(contentKey(id), JSON.stringify(state));
 }
 
 function removeContent(id: string): void {
-  try {
-    localStorage.removeItem(contentKey(id));
-  } catch {
-    /* ignore */
-  }
+  removeKey(contentKey(id));
 }
 
 // --- Lifecycle ---------------------------------------------------------------

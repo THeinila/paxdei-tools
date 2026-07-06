@@ -1,8 +1,8 @@
 /** The catalog of tools in the suite — the single source of truth used by both
  * the routing table (src/routes.tsx) and the landing page (src/shell/Home.tsx).
- * Adding a tool is one entry here plus its component; "soon" entries render as
- * non-clickable placeholder cards and get no route. */
+ * Adding a tool is one entry here plus its component. */
 import type { ReactElement } from "react";
+import { useParams } from "react-router-dom";
 import Planner from "./planner/Planner.tsx";
 import PlannerHome from "./planner/PlannerHome.tsx";
 
@@ -10,18 +10,25 @@ export interface Tool {
   id: string;
   /** Display name, e.g. "Crafting Planner". */
   name: string;
-  /** Route path for live tools (e.g. "/planner"); ignored for "soon" tools. */
+  /** Route path, e.g. "/planner". */
   path: string;
   /** One-line description shown on the landing card and nav. */
   blurb: string;
   /** The tool's own semver, bumped only when this tool changes (independent of the
    * toolkit/release-train version in package.json). Shown as a badge in the UI. */
   version: string;
-  status: "live" | "soon";
-  /** The routed element. Present only for live tools. */
-  element?: ReactElement;
+  /** The routed element. */
+  element: ReactElement;
   /** Optional nested routes mounted under `path` (e.g. "/planner/:listId"). */
   children?: { path: string; element: ReactElement }[];
+}
+
+/** Key the editor by list id so navigating between two lists (e.g. browser
+ * back/forward across /planner/a and /planner/b) remounts it instead of
+ * re-rendering with the previous list's state. */
+function PlannerRoute() {
+  const { listId } = useParams();
+  return <Planner key={listId} />;
 }
 
 export const tools: Tool[] = [
@@ -34,11 +41,7 @@ export const tools: Tool[] = [
       "material to gather and intermediate to craft — with owned stock subtracted. " +
       "Share a link to divide the work with your group.",
     version: "1.0.0",
-    status: "live",
     element: <PlannerHome />,
-    children: [{ path: ":listId", element: <Planner /> }],
+    children: [{ path: ":listId", element: <PlannerRoute /> }],
   },
 ];
-
-/** Tools that have a route + component. */
-export const liveTools = tools.filter((t): t is Tool & { element: ReactElement } => t.status === "live");

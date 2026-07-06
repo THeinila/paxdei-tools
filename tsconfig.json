@@ -14,5 +14,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src", "scripts", "server"]
+  "include": ["src", "scripts", "server", "shared"]
 }

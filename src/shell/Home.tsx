@@ -1,7 +1,7 @@
-/** Landing page: an intro and a grid of tool cards driven by the registry. Live
- * tools link to their route; "soon" tools render as dimmed, non-clickable cards. */
+/** Landing page: an intro and a grid of tool cards driven by the registry, plus
+ * a static "coming soon" placeholder card. */
 import { Link } from "react-router-dom";
-import { liveTools } from "../tools/registry.tsx";
+import { tools } from "../tools/registry.tsx";
 
 export default function Home() {
   return (
@@ -10,7 +10,7 @@ export default function Home() {
         A growing suite of fan-made tools for the MMO <strong>Pax Dei</strong>.
       </p>
       <div className="tool-grid">
-        {liveTools.map((t) => (
+        {tools.map((t) => (
           <Link key={t.id} to={t.path} className="tool-card">
             <h2>
               {t.name} <span className="tool-version">v{t.version}</span>
