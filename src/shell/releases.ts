@@ -27,6 +27,38 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-07-07",
+    title: "The hunt is on",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "new",
+            text: "The archery & hunting update is in: plan recurve bows, arrows, bow strings, archery targets and hunting trophies — 30 new items with their recipes and icons.",
+          },
+          {
+            kind: "fixed",
+            text: "Quickly checking off two materials in a shared list no longer makes the first edit snap back.",
+          },
+          {
+            kind: "fixed",
+            text: "Going back and forward between two shared lists now shows the right list instead of the previous one's contents.",
+          },
+          {
+            kind: "fixed",
+            text: "Searching for something that doesn't exist now shows a proper \"no items match\" message instead of a bare line of text.",
+          },
+          {
+            kind: "improved",
+            text: "Item quantities are kept to sensible whole numbers everywhere — no more accidental fractional or zero targets.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-07-01",
     title: "First release",
