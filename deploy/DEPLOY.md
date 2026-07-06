@@ -132,6 +132,21 @@ without it `dist/icons/` is empty and all item images 404.
   for a known ≤20-person group. If abuse appears, add a shared-secret env gate.
 - Enable `unattended-upgrades` for OS patches.
 
+## Usage metrics
+
+The server keeps anonymous, aggregate-only usage metrics in SQLite (see
+`server/metrics.ts`): daily event counters (lists created) and a unique-visitor
+count based on an HMAC-hashed client IP — no cookies, no client-side tracking,
+no raw IPs stored. To read them, set a `STATS_TOKEN` in the systemd unit
+(uncomment the line in `pax-planner.service`, pick a long random string, then
+`sudo systemctl daemon-reload && sudo systemctl restart pax-planner`) and query:
+
+```bash
+curl -H "Authorization: Bearer <STATS_TOKEN>" https://<host>/api/stats
+```
+
+Without `STATS_TOKEN` the endpoint doesn't exist (404); collection still runs.
+
 ## Verification (run after deploy)
 
 1. **TLS + serve:** `curl -I https://<host>` returns 200; browser shows a valid

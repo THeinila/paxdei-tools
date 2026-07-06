@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { randomBytes } from "node:crypto";
 import type { DB } from "./db.ts";
 import type { ListStateDef } from "../shared/listTypes.ts";
+import { bumpMetric } from "./metrics.ts";
 
 /** A row from the lists table (state is the JSON-encoded ListStateDef). */
 interface ListRow {
@@ -124,6 +125,7 @@ export function createListsRouter(db: DB) {
         const qty = Math.min(MAX_QTY, Math.floor(Number(qtyRaw)));
         if (Number.isFinite(qty) && qty > 0) seed.run(listId, itemId, qty, handle, ts);
       }
+      bumpMetric(db, "list_created");
       return listId;
     });
     const listId = create();

@@ -87,7 +87,11 @@ landing page; each tool is a self-contained module under `src/tools/<tool>/`.
   progress writes are atomic additive deltas (`qty = qty + delta`, no lost updates);
   list-definition edits are version-guarded (optimistic concurrency → 409 + rebase).
   The planner's routes live under `/api/lists*`; future tools mount their own
-  routers under `/api/<tool>/…`.
+  routers under `/api/<tool>/…`. Also collects **privacy-preserving usage metrics**
+  (`server/metrics.ts`): aggregate daily event counters and unique visitors via an
+  HMAC-hashed client IP — no cookies, no client-side tracking code, raw IPs never
+  stored. Aggregates are served at `GET /api/stats` only when a `STATS_TOKEN` env
+  var is set (bearer auth); unset, the route 404s.
 - **`scripts/`** — re-runnable data pipeline (fetch → normalize → icons); see
   [scripts/README.md](scripts/README.md).
 

@@ -44,5 +44,29 @@ function migrate(db: DB): void {
       PRIMARY KEY (list_id, item_id),
       FOREIGN KEY (list_id) REFERENCES lists(id) ON DELETE CASCADE
     );
+
+    -- Server-generated secrets and other one-off settings (e.g. the visitor
+    -- pepper used by server/metrics.ts).
+    CREATE TABLE IF NOT EXISTS meta (
+      key    TEXT PRIMARY KEY,
+      value  TEXT NOT NULL
+    );
+
+    -- Daily event counters (e.g. list_created). Aggregates only — a row says
+    -- "N of this event happened on this day", never who did it.
+    CREATE TABLE IF NOT EXISTS metrics (
+      day     TEXT NOT NULL,
+      metric  TEXT NOT NULL,
+      count   INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (day, metric)
+    );
+
+    -- Unique-visitor tracking. hash is HMAC-SHA256(pepper, client IP) — the
+    -- raw IP is never stored and there is no cookie or client-side ID.
+    CREATE TABLE IF NOT EXISTS visitors (
+      hash        TEXT PRIMARY KEY,
+      first_seen  TEXT NOT NULL,
+      last_seen   TEXT NOT NULL
+    );
   `);
 }
