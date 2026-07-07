@@ -5,6 +5,8 @@ import type { ReactElement } from "react";
 import { useParams } from "react-router-dom";
 import Planner from "./planner/Planner.tsx";
 import PlannerHome from "./planner/PlannerHome.tsx";
+import CraftOrBuy from "./craftorbuy/CraftOrBuy.tsx";
+import TradeRoutes from "./traderoutes/TradeRoutes.tsx";
 
 export interface Tool {
   id: string;
@@ -40,8 +42,29 @@ export const tools: Tool[] = [
       "Search items, build a crafting list, and get a flattened plan of every raw " +
       "material to gather and intermediate to craft — with owned stock subtracted. " +
       "Share a link to divide the work with your group.",
-    version: "1.1.0",
+    version: "1.2.0",
     element: <PlannerHome />,
     children: [{ path: ":listId", element: <PlannerRoute /> }],
+  },
+  {
+    id: "craftorbuy",
+    name: "Craft or Buy",
+    path: "/craft-or-buy",
+    blurb:
+      "Is it cheaper to buy an item off a market stall or craft it from parts? " +
+      "Live-price decision tree for any item, plus a dashboard of what's " +
+      "profitable to craft and sell in your zone.",
+    version: "1.0.0",
+    element: <CraftOrBuy />,
+  },
+  {
+    id: "traderoutes",
+    name: "Trade Routes",
+    path: "/trade-routes",
+    blurb:
+      "Cross-zone price gaps on your server: what to buy cheap in one province " +
+      "and sell dear in another, with per-trip profit estimates.",
+    version: "1.0.0",
+    element: <TradeRoutes />,
   },
 ];

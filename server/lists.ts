@@ -41,6 +41,7 @@ function isFiniteNumber(v: unknown): v is number {
 // Bounds so a single request can't store an unbounded blob (the API is exposed).
 const MAX_TARGETS = 500;
 const MAX_PATH_CHOICES = 1000;
+const MAX_BUYS = 1000;
 const MAX_ID_LEN = 128;
 const MAX_HANDLE_LEN = 64;
 const MAX_NAME_LEN = 80;
@@ -75,7 +76,12 @@ function sanitizeState(raw: unknown): ListStateDef {
     if (k.length <= MAX_ID_LEN && isShortString(v, MAX_ID_LEN)) pathChoices[k] = v;
     if (Object.keys(pathChoices).length >= MAX_PATH_CHOICES) break;
   }
-  return { name, targets, pathChoices };
+  const buysRaw = Array.isArray(obj.buys) ? obj.buys : [];
+  const buys = [...new Set(buysRaw.filter((b): b is string => isShortString(b, MAX_ID_LEN)))].slice(
+    0,
+    MAX_BUYS,
+  );
+  return { name, targets, pathChoices, buys };
 }
 
 function progressList(db: DB, listId: number) {

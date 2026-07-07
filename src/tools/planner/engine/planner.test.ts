@@ -204,3 +204,50 @@ describe("plan", () => {
     expect(p.warnings.some((w) => /cycle/i.test(w))).toBe(true);
   });
 });
+
+describe("buys (purchase instead of craft/gather)", () => {
+  it("emits a buy step and prunes the whole ingredient sub-tree", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 2 }], { buys: ["plank"] });
+    expect(p.buys).toEqual([{ itemId: "plank", needed: 8, satisfied: false }]);
+    expect(p.crafts.find((c) => c.itemId === "plank")).toBeUndefined();
+    // wood was only needed for planks — it must not appear at all.
+    expect(p.gather.find((g) => g.itemId === "wood")).toBeUndefined();
+    // nails are unaffected.
+    expect(p.gather.find((g) => g.itemId === "iron_ore")).toBeDefined();
+  });
+
+  it("subtracts owned stock before buying", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 2 }], {
+      buys: ["plank"],
+      owned: { plank: 3 },
+    });
+    expect(p.buys).toEqual([{ itemId: "plank", needed: 5, satisfied: false }]);
+  });
+
+  it("marks a fully-owned bought item satisfied with its gross demand", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], {
+      buys: ["plank"],
+      owned: { plank: 99 },
+    });
+    expect(p.buys).toEqual([{ itemId: "plank", needed: 4, satisfied: true }]);
+  });
+
+  it("supports buying a gatherable raw", () => {
+    const p = plan(fixture(), [{ itemId: "plank", quantity: 1 }], { buys: ["wood"] });
+    expect(p.buys).toEqual([{ itemId: "wood", needed: 2, satisfied: false }]);
+    expect(p.gather).toEqual([]);
+  });
+
+  it("supports buying a target item itself", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 3 }], { buys: ["table"] });
+    expect(p.buys).toEqual([{ itemId: "table", needed: 3, satisfied: false }]);
+    expect(p.crafts).toEqual([]);
+    expect(p.gather).toEqual([]);
+  });
+
+  it("leaves the plan untouched when the bought item is not demanded", () => {
+    const p = plan(fixture(), [{ itemId: "chair", quantity: 1 }], { buys: ["table"] });
+    expect(p.buys).toEqual([]);
+    expect(p.crafts.map((c) => c.itemId).sort()).toEqual(["chair", "nail", "plank"]);
+  });
+});

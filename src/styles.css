@@ -741,3 +741,189 @@ input[type="number"] {
     padding: 6px 0;
   }
 }
+
+/* Market (shared by the planner integration, Craft or Buy, and Trade Routes) */
+
+.market-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 14px 0 4px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.zone-picker {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.zone-picker-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.zone-picker select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 6px;
+}
+.market-fresh {
+  color: var(--muted);
+  font-size: 12px;
+}
+.market-fresh.stale {
+  color: var(--danger);
+}
+.market-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.price-chip {
+  color: var(--accent);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.buy-hint {
+  color: var(--accent-2);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.buy-toggle:hover {
+  color: var(--accent-2);
+}
+.buy-recommend-all {
+  color: var(--accent-2);
+}
+.buy-recommend-all:hover {
+  color: var(--accent);
+}
+
+/* Market tools (Craft or Buy, Trade Routes) */
+
+.market-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.market-table th,
+.market-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.market-table td.num,
+.market-table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.market-table th {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.market-table th.sorted {
+  color: var(--accent);
+}
+.market-table tbody tr:hover {
+  background: var(--panel-2);
+}
+.market-table .item-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.market-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 10px 0;
+}
+.market-filters input[type="text"],
+.market-filters input[type="number"],
+.market-filters select {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 4px 8px;
+}
+.market-filters label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cost-tree {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.cost-tree ul {
+  list-style: none;
+  padding-left: 22px;
+  border-left: 1px solid var(--border);
+  margin: 0 0 0 9px;
+}
+.cost-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.cost-node .strategy {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.cost-node .strategy.buy {
+  background: rgba(200, 137, 58, 0.2);
+  color: var(--accent);
+}
+.cost-node .strategy.craft {
+  background: rgba(111, 155, 90, 0.2);
+  color: var(--accent-2);
+}
+.cost-node .strategy.gather {
+  background: rgba(168, 153, 127, 0.18);
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .market-table {
+    font-size: 12px;
+  }
+  .market-table th,
+  .market-table td {
+    padding: 5px 6px;
+  }
+}
+
+.tab-btn {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+.tab-btn.active {
+  color: var(--text);
+  border-color: var(--accent);
+}

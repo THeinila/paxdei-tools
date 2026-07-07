@@ -1,0 +1,6 @@
+[
+  { "id": "fx-lib-01", "avatar_hash": "c1", "stall_hash": "u1", "item_id": "item_material_charcoal", "creation_date": 1783000000, "quantity": 200, "price": 10, "lifetime": 1, "durability": 1, "world": "testworld", "domain": "ancien", "zone": "libornes", "last_seen": 1783376076 },
+  { "id": "fx-lib-02", "avatar_hash": "c1", "stall_hash": "u1", "item_id": "item_raw_material_ore_iron_impure", "creation_date": 1783000000, "quantity": 20, "price": 100, "lifetime": 1, "durability": 1, "world": "testworld", "domain": "ancien", "zone": "libornes", "last_seen": 1783376076 },
+  { "id": "fx-lib-03", "avatar_hash": "c2", "stall_hash": "u2", "item_id": "item_material_ingot_iron", "creation_date": 1783000000, "quantity": 40, "price": 80, "lifetime": 1, "durability": 1, "world": "testworld", "domain": "ancien", "zone": "libornes", "last_seen": 1783376076 },
+  { "id": "fx-lib-04", "avatar_hash": "c3", "stall_hash": "u3", "item_id": "activatable_foodraw_berry_grape_red_staminaregen_21", "creation_date": 1783000000, "quantity": 50, "price": 50, "lifetime": 1, "durability": 1, "world": "testworld", "domain": "ancien", "zone": "libornes", "last_seen": 1783376076 }
+]

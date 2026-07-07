@@ -7,13 +7,21 @@ import { useList } from "./lib/useList.ts";
 import { createList } from "./lib/api.ts";
 import { ensureHandle, getHandle, promptHandle } from "./lib/handle.ts";
 import { DEFAULT_NAME, getEntry, updateEntry } from "./lib/directory.ts";
+import { MarketBar } from "../../market/MarketBar.tsx";
+import { useMarketStatus, useZonePrices, useZoneSelection } from "../../market/hooks.ts";
 
 export default function Planner() {
   const { listId = "" } = useParams();
   const entry = getEntry(listId);
   const [token, setToken] = useState<string | null>(entry?.shareToken ?? null);
-  const { state, result, mode, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
+  const { state, result, mode, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, toggleBuy, addBuys, setName, clear } =
     useList(listId, token);
+
+  // Market prices for the user's home zone (per-user, never shared). All
+  // market UI vanishes when the backend has no upstream (or there's no backend).
+  const market = useMarketStatus();
+  const [zone, setZone] = useZoneSelection();
+  const zonePrices = useZonePrices(market.enabled ? zone : null);
   const [shareBusy, setShareBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [handle, setHandleState] = useState<string | null>(getHandle());
@@ -51,7 +59,7 @@ export default function Planner() {
       const who = ensureHandle();
       setHandleState(who);
       const created = await createList(
-        { name: state.name, targets: state.targets, pathChoices: state.pathChoices },
+        { name: state.name, targets: state.targets, pathChoices: state.pathChoices, buys: state.buys },
         state.owned,
         who,
       );
@@ -153,13 +161,18 @@ export default function Planner() {
             )}
           </section>
 
+          {market.enabled && <MarketBar value={zone} onChange={setZone} prices={zonePrices} />}
+
           <PlanView
             result={result}
             owned={state.owned}
             pathChoices={state.pathChoices}
             progress={progress}
+            prices={zonePrices.data}
             setOwned={setOwned}
             setPathChoice={setPathChoice}
+            toggleBuy={toggleBuy}
+            addBuys={addBuys}
           />
         </>
       )}

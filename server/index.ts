@@ -8,6 +8,7 @@ import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
+import { createMarketRouter } from "./market.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
 import { rateLimit } from "./rateLimit.ts";
 
@@ -29,6 +30,10 @@ app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_
 // router under its own namespace (e.g. app.route("/api/<tool>", ...)) so routes
 // never collide; these planner routes predate that convention and keep /api/lists.
 app.route("/api", createListsRouter(db));
+
+// Cached market prices (read-only). Requires MARKET_UPSTREAM=fixtures|live;
+// with the default (off) only /api/market/status responds.
+app.route("/api/market", createMarketRouter(db));
 
 // Aggregate stats, only served when STATS_TOKEN is configured:
 //   curl -H "Authorization: Bearer $STATS_TOKEN" https://<host>/api/stats

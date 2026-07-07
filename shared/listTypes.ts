@@ -8,6 +8,10 @@ export interface ListStateDef {
   name: string;
   targets: { itemId: string; quantity: number }[];
   pathChoices: Record<string, string>;
+  /** Items to buy instead of craft/gather (prunes their sub-trees). Shared like
+   * pathChoices — collaborators must see the same plan shape. Absent in lists
+   * stored before this field existed; treat as []. */
+  buys: string[];
 }
 
 /** One item's collaborative "have" entry, attributed to the last toucher. */

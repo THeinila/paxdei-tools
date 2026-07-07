@@ -23,7 +23,13 @@ export interface ListEntry {
   updatedAt: string;
 }
 
-export const EMPTY_CONTENT: ListState = { name: DEFAULT_NAME, targets: [], owned: {}, pathChoices: {} };
+export const EMPTY_CONTENT: ListState = {
+  name: DEFAULT_NAME,
+  targets: [],
+  owned: {},
+  pathChoices: {},
+  buys: [],
+};
 
 function newId(): string {
   try {
@@ -130,7 +136,11 @@ export function deleteEntry(id: string): void {
  * both local lists and the current snapshot of a shared one. */
 export function duplicate(
   name: string,
-  def: { targets: ListState["targets"]; pathChoices: ListState["pathChoices"] },
+  def: {
+    targets: ListState["targets"];
+    pathChoices: ListState["pathChoices"];
+    buys?: ListState["buys"];
+  },
 ): ListEntry {
   const entry = createLocal(`${name} (copy)`);
   saveContent(entry.id, {
@@ -138,6 +148,7 @@ export function duplicate(
     targets: def.targets,
     owned: {},
     pathChoices: def.pathChoices,
+    buys: def.buys ?? [],
   });
   return updateEntry(entry.id, { targetCount: def.targets.length }) ?? entry;
 }

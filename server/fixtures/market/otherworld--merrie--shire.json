@@ -1,0 +1,4 @@
+[
+  { "id": "fx-ow-01", "avatar_hash": "d1", "stall_hash": "v1", "item_id": "item_material_ingot_iron", "creation_date": 1783000000, "quantity": 20, "price": 100, "lifetime": 1, "durability": 1, "world": "otherworld", "domain": "merrie", "zone": "shire", "last_seen": 1783376076 },
+  { "id": "fx-ow-02", "avatar_hash": "d1", "stall_hash": "v1", "item_id": "item_material_charcoal", "creation_date": 1783000000, "quantity": 100, "price": 20, "lifetime": 1, "durability": 1, "world": "otherworld", "domain": "merrie", "zone": "shire", "last_seen": 1783376076 }
+]

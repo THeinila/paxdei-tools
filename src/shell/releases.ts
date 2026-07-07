@@ -27,6 +27,56 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-07-07",
+    title: "Gold makes the world go round",
+    sections: [
+      {
+        tool: "Craft or Buy",
+        changes: [
+          {
+            kind: "new",
+            text: "New tool! Pick any item and see whether it's cheaper to buy it off a market stall or craft it from parts — with every part again priced the cheapest way. One click sends the whole shopping-and-crafting plan to the planner.",
+          },
+          {
+            kind: "new",
+            text: "The Profit tab ranks what's actually worth crafting to sell in your zone, by margin, filterable by profession.",
+          },
+        ],
+      },
+      {
+        tool: "Trade Routes",
+        changes: [
+          {
+            kind: "new",
+            text: "New tool! Find price gaps between zones on your server: what to buy cheap in one province and sell dear in another, with per-trip profit estimates that respect stack sizes.",
+          },
+        ],
+      },
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "new",
+            text: "Pick your home market zone and every material in your plan shows its cheapest listing. When buying beats crafting, the row says so — apply all the suggestions with one click.",
+          },
+          {
+            kind: "new",
+            text: "Mark anything as \"buy\" and its whole ingredient tree folds into a Buy list with a gold total. Works in shared lists too — everyone sees the same plan.",
+          },
+        ],
+      },
+      {
+        changes: [
+          {
+            kind: "new",
+            text: "Market prices come from the community market data (updated hourly) and are cached gently — the tools stay fully usable when price data is unavailable. Price features are rolling out and appear once market data is switched on for this site.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-07-07",
     title: "The hunt is on",
