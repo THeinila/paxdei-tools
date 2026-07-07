@@ -42,11 +42,22 @@ export interface GatherStep {
   satisfied: boolean;
 }
 
+/** A buy step: purchase `needed` units instead of crafting/gathering them.
+ * The item's whole ingredient sub-tree is pruned — bought items arrive whole. */
+export interface BuyStep {
+  itemId: string;
+  needed: number;
+  /** Owned stock fully covers the gross demand: keep the row but grey it out. */
+  satisfied: boolean;
+}
+
 export interface Plan {
   /** Intermediate + target crafts, ordered dependencies-first. */
   crafts: CraftStep[];
   /** Raw materials to gather. */
   gather: GatherStep[];
+  /** Items marked "buy": acquired whole, their ingredients not planned. */
+  buys: BuyStep[];
   /** Items with >1 path and the variant chosen for each (for UI override). */
   choices: { itemId: string; chosen: string; available: string[] }[];
   warnings: string[];
@@ -57,10 +68,13 @@ export interface PlanOptions {
   owned?: Record<string, number>;
   /** itemId -> recipeId, to override the default variant for multi-path items. */
   pathChoices?: Record<string, string>;
+  /** Items to buy instead of craft/gather. Owned stock still subtracts first
+   * (own 5, buy the rest); the item's ingredients receive no demand at all. */
+  buys?: Iterable<string>;
 }
 
 /** Pick the recipe variant for an item: explicit choice, else the first variant. */
-function pickVariant(
+export function pickVariant(
   ds: Dataset,
   itemId: string,
   pathChoices: Record<string, string>,
@@ -78,7 +92,14 @@ function pickVariant(
 export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}): Plan {
   const owned = { ...(options.owned ?? {}) };
   const pathChoices = options.pathChoices ?? {};
+  const buys = new Set(options.buys ?? []);
   const warnings: string[] = [];
+
+  // A bought node is a leaf in every pass below: its recipe is never expanded,
+  // so its ingredient sub-tree receives no demand (and isn't even discovered
+  // unless another consumer needs it).
+  const variantOf = (id: string): RecipeVariant | null =>
+    buys.has(id) ? null : pickVariant(ds, id, pathChoices);
 
   // 1. Discover the reachable sub-graph (only along chosen variants) and the
   //    "consumes" edges, so we can process each item after all its consumers.
@@ -103,7 +124,7 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
     const id = stack.pop()!;
     if (walked.has(id)) continue;
     walked.add(id);
-    const variant = pickVariant(ds, id, pathChoices);
+    const variant = variantOf(id);
     if (!variant) continue;
     for (const ing of variant.ingredients) {
       nodes.add(ing.itemId);
@@ -121,7 +142,7 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
   while (ready.length) {
     const id = ready.shift()!;
     order.push(id);
-    const variant = pickVariant(ds, id, pathChoices);
+    const variant = variantOf(id);
     if (!variant) continue;
     for (const ing of variant.ingredients) {
       const left = (remaining.get(ing.itemId) ?? 0) - 1;
@@ -144,7 +165,7 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
   for (const t of targets) depth.set(t.itemId, Math.max(depth.get(t.itemId) ?? 0, 0));
   for (const id of order) {
     const d = depth.get(id) ?? 0;
-    const variant = pickVariant(ds, id, pathChoices);
+    const variant = variantOf(id);
     if (!variant) continue;
     for (const ing of variant.ingredients) {
       depth.set(ing.itemId, Math.max(depth.get(ing.itemId) ?? 0, d + 1));
@@ -166,6 +187,7 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
 
   const crafts: CraftStep[] = [];
   const gather: GatherStep[] = [];
+  const buySteps: BuyStep[] = [];
 
   for (const id of order) {
     const grossNeed = gross.get(id) ?? 0;
@@ -175,7 +197,12 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
     const need = Math.max(0, activeNeed - have);
     const satisfied = need <= 0;
 
-    const variant = pickVariant(ds, id, pathChoices);
+    if (buys.has(id)) {
+      buySteps.push({ itemId: id, needed: satisfied ? grossNeed : need, satisfied });
+      continue;
+    }
+
+    const variant = variantOf(id);
     if (!variant) {
       gather.push({ itemId: id, needed: satisfied ? grossNeed : need, satisfied });
       continue;
@@ -209,6 +236,7 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
   // 5. Crafts are emitted consumers-first; reverse so dependencies come first.
   crafts.reverse();
   gather.sort((a, b) => a.itemId.localeCompare(b.itemId));
+  buySteps.sort((a, b) => a.itemId.localeCompare(b.itemId));
 
   // 6. Surface alternative-path choices for the UI.
   const choices = [...nodes]
@@ -219,5 +247,5 @@ export function plan(ds: Dataset, targets: Target[], options: PlanOptions = {}):
       available: ds.recipes[id]!.variants.map((v) => v.recipeId),
     }));
 
-  return { crafts, gather, choices, warnings };
+  return { crafts, gather, buys: buySteps, choices, warnings };
 }

@@ -68,5 +68,40 @@ function migrate(db: DB): void {
       first_seen  TEXT NOT NULL,
       last_seen   TEXT NOT NULL
     );
+
+    -- Market data cache (server/market.ts). The upstream refreshes hourly, so
+    -- snapshots live in SQLite (not memory) to survive restarts without
+    -- refetching. market_zones mirrors the upstream index; freshness is
+    -- tracked in market_zone_fetches (a zone can legitimately roll up to zero
+    -- price rows); market_prices holds per-item rollups for the latest
+    -- snapshot only (no history).
+    CREATE TABLE IF NOT EXISTS market_zones (
+      world   TEXT NOT NULL,
+      domain  TEXT NOT NULL,
+      zone    TEXT NOT NULL,
+      url     TEXT NOT NULL,
+      PRIMARY KEY (world, domain, zone)
+    );
+
+    CREATE TABLE IF NOT EXISTS market_zone_fetches (
+      world       TEXT NOT NULL,
+      domain      TEXT NOT NULL,
+      zone        TEXT NOT NULL,
+      fetched_at  TEXT NOT NULL,
+      PRIMARY KEY (world, domain, zone)
+    );
+
+    CREATE TABLE IF NOT EXISTS market_prices (
+      world          TEXT NOT NULL,
+      domain         TEXT NOT NULL,
+      zone           TEXT NOT NULL,
+      item_id        TEXT NOT NULL,
+      min_price      REAL NOT NULL,
+      median_price   REAL NOT NULL,
+      qty_at_min     INTEGER NOT NULL,
+      total_qty      INTEGER NOT NULL,
+      listing_count  INTEGER NOT NULL,
+      PRIMARY KEY (world, domain, zone, item_id)
+    );
   `);
 }

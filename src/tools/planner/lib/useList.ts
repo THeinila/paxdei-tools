@@ -30,13 +30,15 @@ export interface ListState {
   targets: Target[];
   owned: Record<string, number>;
   pathChoices: Record<string, string>;
+  /** Items to buy instead of craft/gather. Part of the shared definition. */
+  buys: string[];
 }
 
 export type Mode = "local" | "shared";
 export type ProgressMap = Record<string, ProgressEntry>;
 
 const POLL_MS = 3000;
-const EMPTY: ListState = { name: "", targets: [], owned: {}, pathChoices: {} };
+const EMPTY: ListState = { name: "", targets: [], owned: {}, pathChoices: {}, buys: [] };
 
 // --- Pure definition updaters (shared by both modes) -------------------------
 
@@ -62,6 +64,17 @@ function setPathChoiceDef(def: ListStateDef, itemId: string, recipeId: string): 
   return { ...def, pathChoices: { ...def.pathChoices, [itemId]: recipeId } };
 }
 
+function toggleBuyDef(def: ListStateDef, itemId: string): ListStateDef {
+  const buys = def.buys.includes(itemId)
+    ? def.buys.filter((b) => b !== itemId)
+    : [...def.buys, itemId];
+  return { ...def, buys };
+}
+
+function addBuysDef(def: ListStateDef, itemIds: string[]): ListStateDef {
+  return { ...def, buys: [...new Set([...def.buys, ...itemIds])] };
+}
+
 function progressToOwned(progress: ProgressMap): Record<string, number> {
   const owned: Record<string, number> = {};
   for (const p of Object.values(progress)) if (p.qty > 0) owned[p.itemId] = p.qty;
@@ -85,6 +98,10 @@ export interface UseList {
   setTargetQty: (itemId: string, quantity: number) => void;
   setOwned: (itemId: string, qty: number) => void;
   setPathChoice: (itemId: string, recipeId: string) => void;
+  /** Flip one item between "buy it" and "craft/gather it". */
+  toggleBuy: (itemId: string) => void;
+  /** Mark several items as bought at once (the "apply recommendations" action). */
+  addBuys: (itemIds: string[]) => void;
   setName: (name: string) => void;
   clear: () => void;
 }
@@ -108,10 +125,16 @@ export function useList(id: string, token: string | null): UseList {
     name: state.name,
     targets: state.targets,
     pathChoices: state.pathChoices,
+    buys: state.buys,
   });
   useEffect(() => {
-    defRef.current = { name: state.name, targets: state.targets, pathChoices: state.pathChoices };
-  }, [state.name, state.targets, state.pathChoices]);
+    defRef.current = {
+      name: state.name,
+      targets: state.targets,
+      pathChoices: state.pathChoices,
+      buys: state.buys,
+    };
+  }, [state.name, state.targets, state.pathChoices, state.buys]);
 
   // --- Local mode: persist to localStorage -----------------------------------
   useEffect(() => {
@@ -129,6 +152,8 @@ export function useList(id: string, token: string | null): UseList {
           name: snap.state.name,
           targets: snap.state.targets,
           pathChoices: snap.state.pathChoices,
+          // Lists stored before the buys field existed come back without it.
+          buys: snap.state.buys ?? [],
         };
         setState((s) => ({ ...s, ...defRef.current }));
       }
@@ -173,7 +198,13 @@ export function useList(id: string, token: string | null): UseList {
       // so back-to-back edits compose correctly.
       const next = fn(defRef.current);
       defRef.current = next;
-      setState((s) => ({ ...s, name: next.name, targets: next.targets, pathChoices: next.pathChoices }));
+      setState((s) => ({
+        ...s,
+        name: next.name,
+        targets: next.targets,
+        pathChoices: next.pathChoices,
+        buys: next.buys,
+      }));
       if (!token) return;
 
       pendingEdits.current += 1;
@@ -186,13 +217,14 @@ export function useList(id: string, token: string | null): UseList {
             // Rebase our edit on the server's current definition and retry once.
             try {
               versionRef.current = e.current.version;
-              const rebased = fn(e.current.state);
+              const rebased = fn({ ...e.current.state, buys: e.current.state.buys ?? [] });
               defRef.current = rebased;
               setState((s) => ({
                 ...s,
                 name: rebased.name,
                 targets: rebased.targets,
                 pathChoices: rebased.pathChoices,
+                buys: rebased.buys,
               }));
               const saved = await patchList(token, rebased, e.current.version);
               versionRef.current = saved.version;
@@ -222,12 +254,20 @@ export function useList(id: string, token: string | null): UseList {
     (itemId: string, recipeId: string) => editDef((d) => setPathChoiceDef(d, itemId, recipeId)),
     [editDef],
   );
+  const toggleBuy = useCallback(
+    (itemId: string) => editDef((d) => toggleBuyDef(d, itemId)),
+    [editDef],
+  );
+  const addBuys = useCallback(
+    (itemIds: string[]) => editDef((d) => addBuysDef(d, itemIds)),
+    [editDef],
+  );
   const setName = useCallback(
     (name: string) => editDef((d) => ({ ...d, name })),
     [editDef],
   );
   const clear = useCallback(
-    () => editDef((d) => ({ name: d.name, targets: [], pathChoices: {} })),
+    () => editDef((d) => ({ name: d.name, targets: [], pathChoices: {}, buys: [] })),
     [editDef],
   );
 
@@ -276,8 +316,8 @@ export function useList(id: string, token: string | null): UseList {
   );
 
   const result = useMemo(
-    () => plan(dataset, state.targets, { owned, pathChoices: state.pathChoices }),
-    [state.targets, state.pathChoices, owned],
+    () => plan(dataset, state.targets, { owned, pathChoices: state.pathChoices, buys: state.buys }),
+    [state.targets, state.pathChoices, state.buys, owned],
   );
 
   const exposedState = useMemo(
@@ -296,6 +336,8 @@ export function useList(id: string, token: string | null): UseList {
     setTargetQty,
     setOwned,
     setPathChoice,
+    toggleBuy,
+    addBuys,
     setName,
     clear,
   };

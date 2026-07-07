@@ -5,6 +5,47 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.2.0] — 2026-07-07
+
+### Toolkit
+- Market data layer: `/api/market/*` serves per-item price rollups per zone, cached in
+  SQLite with an hourly TTL (matching the upstream refresh), single-flighted refreshes,
+  and stale-snapshot fallback. Upstream is the public gaming.tools market API, isolated
+  behind `server/marketUpstream.ts` with three modes via `MARKET_UPSTREAM`:
+  `off` (default — data endpoints 503, all market UI hidden), `fixtures`
+  (`server/fixtures/market/`, used by dev + tests), and `live` (real CDN; only enable
+  once the API developer has been informed). Listing `price` is interpreted as the
+  listing TOTAL (unit = price/quantity) — confirm at go-live; mastercraft listings are
+  excluded from rollups.
+- Shared frontend market module (`src/market/`): typed client with request dedupe,
+  hooks, cascading zone picker (persisted per user), gold/freshness formatting.
+- Recipe engine: `buys` option — items marked "buy" become BuyStep leaves and their
+  ingredient sub-trees receive no demand. `ListStateDef` gains a `buys: string[]`
+  field (sanitized server-side; old lists default to `[]`).
+- New pure cost engine (`engine/cost.ts`): per-unit buy-vs-craft costs over the recipe
+  graph, honoring the plan's variant choices; unpriced gatherables count as free and
+  flag the result as partially priced.
+
+### Crafting Planner 1.2.0
+- Market integration (only when the server enables market data): zone picker with
+  snapshot freshness, per-row cheapest-listing price chips, per-row "buy" toggle that
+  moves an item (and prunes its sub-tree) into a new Buy section with line costs and a
+  gold total, "cheaper to buy" hints with a one-click "apply N buy recommendations".
+- Buy toggles work without market data too (manual "someone else makes this").
+- Buy state is part of the shared list definition and syncs to collaborators.
+
+### Craft or Buy 1.0.0 (new tool)
+- Explorer: per-item buy/craft/gather decision tree at current zone prices, with
+  "send to planner" that creates a list with the buy decisions pre-set.
+- Profit dashboard: craft cost (parts at their cheapest acquisition) vs. current
+  cheapest listing, margin and margin %, filterable by profession; partial pricing
+  flagged with ≈.
+
+### Trade Routes 1.0.0 (new tool)
+- Cross-zone arbitrage per server: cheapest buy zone vs. dearest sell zone per item,
+  spread, spread %, buyable volume near the min price, and per-trip profit capped by
+  stack size; expandable all-zones detail; filter/sort table.
+
 ## [1.1.0] — 2026-07-07
 
 ### Toolkit
