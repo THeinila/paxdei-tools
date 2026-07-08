@@ -4,9 +4,16 @@
  * stale-snapshot fallback when a refresh fails. */
 import { beforeEach, describe, expect, it } from "vitest";
 import { openDb, type DB } from "./db.ts";
-import { createMarketRouter } from "./market.ts";
-import { createUpstream, rollup, type Upstream } from "./marketUpstream.ts";
-import type { WorldPrices, ZonePrices, ZoneTree } from "../shared/marketTypes.ts";
+import { createMarketRouter, createMarketService } from "./market.ts";
+import { createMarketCollector, seedFixtureHistory } from "./marketCollector.ts";
+import {
+  createUpstream,
+  rollup,
+  type Upstream,
+  type UpstreamListing,
+  type ZoneRef,
+} from "./marketUpstream.ts";
+import type { WorldPrices, WorldStats, ZonePrices, ZoneTree } from "../shared/marketTypes.ts";
 
 let db: DB;
 
@@ -179,5 +186,203 @@ describe("caching", () => {
     await app.request("/zones"); // cache the index first
     state.fail = true;
     expect((await app.request("/prices/testworld/merrie/shire")).status).toBe(502);
+  });
+});
+
+// ---- History & sales inference ----------------------------------------------------
+
+/** An upstream whose zone contents the test mutates between snapshots. */
+function syntheticUpstream(zones: Record<string, UpstreamListing[]>): Upstream {
+  const refs: ZoneRef[] = Object.keys(zones).map((k) => {
+    const [world, domain, zone] = k.split("/") as [string, string, string];
+    return { world, domain, zone, url: `https://x.invalid/paxdei/market/${k}.json` };
+  });
+  return {
+    fetchIndex: async () => refs,
+    fetchZoneListings: async (ref) => zones[`${ref.world}/${ref.domain}/${ref.zone}`] ?? [],
+  };
+}
+
+const listing = (
+  id: string,
+  item_id: string,
+  quantity: number,
+  price: number,
+  extra: Partial<UpstreamListing> = {},
+): UpstreamListing => ({ id, item_id, quantity, price, lifetime: 1, ...extra });
+
+describe("history accumulation & sales inference", () => {
+  const BASE = Date.parse("2026-07-07T00:00:00Z");
+
+  it("records hourly and daily rows on each snapshot", async () => {
+    const zones = { "w/m/z": [listing("a", "charcoal", 100, 50)] };
+    const svc = createMarketService(db, { mode: "fixtures", upstream: syntheticUpstream(zones), now: () => BASE });
+    await svc.ensureIndex();
+    await svc.ensureZone(svc.findZone("w", "m", "z")!);
+
+    const hourly = db.prepare(`SELECT * FROM market_history_hourly`).all() as Record<string, unknown>[];
+    expect(hourly).toHaveLength(1);
+    expect(hourly[0]).toMatchObject({ item_id: "charcoal", min_price: 0.5 });
+
+    const daily = db.prepare(`SELECT * FROM market_history_daily`).all() as Record<string, unknown>[];
+    expect(daily).toHaveLength(1);
+    expect(daily[0]).toMatchObject({
+      item_id: "charcoal", day: "2026-07-07", min_min: 0.5, median_min: 0.5, snapshots: 1, sold_qty: 0,
+    });
+  });
+
+  it("counts a vanished fresh listing as an estimated sale, a run-out one as expired", async () => {
+    const zones: Record<string, UpstreamListing[]> = {
+      "w/m/z": [
+        listing("a", "charcoal", 100, 50), // fresh — will vanish → sold
+        listing("b", "charcoal", 50, 100, { lifetime: 0.01 }), // nearly expired — will vanish → expired
+        listing("c", "ingot", 20, 60), // stays
+      ],
+    };
+    let clock = BASE;
+    const svc = createMarketService(db, { mode: "fixtures", upstream: syntheticUpstream(zones), now: () => clock });
+    await svc.ensureIndex();
+    const ref = svc.findZone("w", "m", "z")!;
+    await svc.ensureZone(ref);
+
+    zones["w/m/z"] = [listing("c", "ingot", 20, 60)];
+    clock += 61 * 60 * 1000; // past the TTL, same day
+    await svc.ensureZone(ref);
+
+    const charcoal = db
+      .prepare(`SELECT sold_qty, sold_value, expired_qty FROM market_history_daily WHERE item_id = 'charcoal'`)
+      .get() as { sold_qty: number; sold_value: number; expired_qty: number };
+    expect(charcoal.sold_qty).toBe(100);
+    expect(charcoal.sold_value).toBeCloseTo(50); // 100 x 0.5g
+    expect(charcoal.expired_qty).toBe(50);
+
+    // Resolved listings are gone; the surviving one is still tracked.
+    const left = db.prepare(`SELECT id FROM market_listings`).all() as { id: string }[];
+    expect(left.map((r) => r.id)).toEqual(["c"]);
+
+    // The ingot saw no sales.
+    const ingot = db
+      .prepare(`SELECT sold_qty FROM market_history_daily WHERE item_id = 'ingot'`)
+      .get() as { sold_qty: number };
+    expect(ingot.sold_qty).toBe(0);
+  });
+
+  it("excludes mastercraft listings from sales aggregates", async () => {
+    const zones: Record<string, UpstreamListing[]> = {
+      "w/m/z": [listing("mc", "knife", 1, 50, { mastercraft: 1 }), listing("k", "knife", 1, 2)],
+    };
+    let clock = BASE;
+    const svc = createMarketService(db, { mode: "fixtures", upstream: syntheticUpstream(zones), now: () => clock });
+    await svc.ensureIndex();
+    const ref = svc.findZone("w", "m", "z")!;
+    await svc.ensureZone(ref);
+
+    zones["w/m/z"] = []; // both vanish
+    clock += 61 * 60 * 1000;
+    await svc.ensureZone(ref);
+
+    const knife = db
+      .prepare(`SELECT sold_qty, sold_value FROM market_history_daily WHERE item_id = 'knife'`)
+      .get() as { sold_qty: number; sold_value: number };
+    expect(knife.sold_qty).toBe(1); // only the ordinary knife
+    expect(knife.sold_value).toBeCloseTo(2);
+  });
+
+  it("prunes hourly rows past 72 h and daily rows past 60 d", async () => {
+    const zones = { "w/m/z": [listing("a", "charcoal", 100, 50)] };
+    const svc = createMarketService(db, { mode: "fixtures", upstream: syntheticUpstream(zones), now: () => BASE });
+    db.prepare(
+      `INSERT INTO market_history_hourly VALUES ('w','m','z','old','2026-07-01T00:00:00.000Z',1,1,1,1)`,
+    ).run();
+    db.prepare(
+      `INSERT INTO market_history_daily (world, domain, zone, item_id, day, min_min, median_min, snapshots)
+       VALUES ('w','m','z','old','2026-01-01',1,1,1)`,
+    ).run();
+    await svc.ensureIndex();
+    await svc.ensureZone(svc.findZone("w", "m", "z")!);
+
+    expect(db.prepare(`SELECT * FROM market_history_hourly WHERE item_id = 'old'`).all()).toHaveLength(0);
+    expect(db.prepare(`SELECT * FROM market_history_daily WHERE item_id = 'old'`).all()).toHaveLength(0);
+  });
+});
+
+describe("stats & history endpoints", () => {
+  const NOW = Date.parse("2026-07-07T12:00:00Z");
+
+  it("folds daily rows into 7-day stats", async () => {
+    const app = createMarketRouter(db, { mode: "fixtures", now: () => NOW });
+    await app.request("/zones"); // populate the index from fixtures
+    const insDaily = db.prepare(
+      `INSERT INTO market_history_daily (world, domain, zone, item_id, day, min_min, median_min, snapshots, sold_qty, sold_value)
+       VALUES ('testworld','merrie','shire','ingot', ?, ?, ?, 24, ?, 0)`,
+    );
+    for (const [day, medianV, minV, sold] of [
+      ["2026-07-05", 4, 3.6, 10],
+      ["2026-07-06", 5, 4.5, 0],
+      ["2026-07-07", 6, 5.4, 20],
+      ["2026-06-01", 99, 99, 99], // outside the window — ignored
+    ] as [string, number, number, number][]) {
+      insDaily.run(day, minV, medianV, sold);
+    }
+
+    const res = await app.request("/world/testworld/stats");
+    expect(res.status).toBe(200);
+    const ws = (await res.json()) as WorldStats;
+    const s = ws.stats["merrie/shire"]!.ingot!;
+    expect(s.medianMin7d).toBe(5);
+    expect(s.daysObserved).toBe(3);
+    expect(s.soldPerDay).toBe(10); // (10+0+20)/3
+    expect(s.lastSaleAt).toBe("2026-07-07");
+    expect(s.cv7d).toBeGreaterThan(0.1);
+  });
+
+  it("includes zone stats in the prices payload and serves item history", async () => {
+    const app = createMarketRouter(db, { mode: "fixtures", now: () => NOW });
+    await app.request("/zones");
+    db.prepare(
+      `INSERT INTO market_history_daily (world, domain, zone, item_id, day, min_min, median_min, snapshots, sold_qty, sold_value)
+       VALUES ('testworld','merrie','shire','item_material_charcoal','2026-07-06',0.4,0.5,24,80,40)`,
+    ).run();
+
+    const prices = (await (await app.request("/prices/testworld/merrie/shire")).json()) as ZonePrices;
+    // 80 sold yesterday, 0 today (the /prices snapshot opened today's row) → 40/day.
+    expect(prices.stats!.item_material_charcoal!.soldPerDay).toBe(40);
+
+    const hist = (await (
+      await app.request("/history/testworld/merrie/shire/item_material_charcoal")
+    ).json()) as { hourly: unknown[]; daily: { day: string; soldQty: number }[] };
+    expect(hist.daily.some((d) => d.day === "2026-07-06" && d.soldQty === 80)).toBe(true);
+    expect(hist.hourly.length).toBeGreaterThan(0); // from the /prices snapshot above
+  });
+});
+
+describe("collector & seeder", () => {
+  it("collects due zones in batches and goes idle when everything is fresh", async () => {
+    const { upstream, counts } = countingUpstream();
+    const svc = createMarketService(db, { mode: "fixtures", upstream });
+    const collector = createMarketCollector(svc);
+    expect(await collector.tick()).toBe(4); // all fixture zones due
+    expect(counts.zones).toBe(4);
+    expect(await collector.tick()).toBe(0); // everything fresh now
+    expect(counts.zones).toBe(4);
+  });
+
+  it("seeds fixture history idempotently, with the engineered cases", async () => {
+    const svc = createMarketService(db, { mode: "fixtures" });
+    await seedFixtureHistory(db, svc);
+    const n1 = (db.prepare(`SELECT COUNT(*) AS n FROM market_history_daily`).get() as { n: number }).n;
+    expect(n1).toBeGreaterThan(0);
+    await seedFixtureHistory(db, svc);
+    const n2 = (db.prepare(`SELECT COUNT(*) AS n FROM market_history_daily`).get() as { n: number }).n;
+    expect(n2).toBe(n1);
+
+    // Buy anomaly: libornes ingot history sits well above its current price of 2.
+    const stats = svc.worldStats("testworld").stats["ancien/libornes"]!;
+    expect(stats.item_material_ingot_iron!.medianMin7d!).toBeGreaterThan(4);
+    // The zero-sales trap.
+    const shire = svc.worldStats("testworld").stats["merrie/shire"]!;
+    expect(shire.item_material_ingot_wrought_iron!.soldPerDay).toBe(0);
+    // The volatile item.
+    expect(stats.activatable_foodraw_berry_grape_red_staminaregen_21!.cv7d!).toBeGreaterThan(0.5);
   });
 });

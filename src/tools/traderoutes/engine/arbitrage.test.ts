@@ -64,3 +64,99 @@ describe("computeRoutes", () => {
     expect(routes[1]!.perStack).toBe(50);
   });
 });
+
+// ---- History-based reality checks --------------------------------------------------
+
+import type { ItemStats, WorldStats } from "../../../../shared/marketTypes.ts";
+
+function stats(entries: Record<string, Record<string, Partial<ItemStats>>>): WorldStats {
+  const full: WorldStats["stats"] = {};
+  for (const [zk, items] of Object.entries(entries)) {
+    full[zk] = {};
+    for (const [itemId, s] of Object.entries(items)) {
+      full[zk][itemId] = {
+        medianMin7d: null,
+        cv7d: null,
+        soldPerDay: 0,
+        lastSaleAt: null,
+        daysObserved: 7,
+        ...s,
+      };
+    }
+  }
+  return { world: "w", sinceDay: "2026-07-01", stats: full };
+}
+
+describe("computeRoutes with history stats", () => {
+  const twoZones = () =>
+    world([
+      zone("m", "src", { ingot: rollup(2, 40) }),
+      zone("m", "dst", { ingot: rollup(8, 20) }),
+    ]);
+
+  it("reverts an anomalous sell price to the 7-day median", () => {
+    const r = computeRoutes(twoZones(), { ingot: 100 }, stats({
+      "m/src": { ingot: { medianMin7d: 2.1 } },
+      "m/dst": { ingot: { medianMin7d: 4, soldPerDay: 30 } },
+    }))[0]!;
+    expect(r.sellAnomaly).toBe(true); // 8 > 1.5 × 4
+    expect(r.sellEff).toBe(4);
+    expect(r.spreadEff).toBe(2); // 4 − 2, not 6
+    expect(r.spread).toBe(6); // raw spread untouched
+    // profit/day = spreadEff × min(cargo 40, sold 30)
+    expect(r.profitPerDay).toBe(60);
+  });
+
+  it("flags an anomalously cheap buy price", () => {
+    const r = computeRoutes(twoZones(), {}, stats({
+      "m/src": { ingot: { medianMin7d: 5 } }, // current 2 < 0.5 × 5
+      "m/dst": { ingot: { medianMin7d: 7.9 } },
+    }))[0]!;
+    expect(r.buyAnomaly).toBe(true);
+    expect(r.sellAnomaly).toBe(false);
+  });
+
+  it("caps profit per day by the destination's sales rate", () => {
+    const r = computeRoutes(twoZones(), { ingot: 100 }, stats({
+      "m/dst": { ingot: { medianMin7d: 8, soldPerDay: 5 } },
+    }))[0]!;
+    expect(r.profitPerDay).toBe(30); // 6 × min(40, 5)
+  });
+
+  it("zero sales → zero profit per day, however juicy the spread", () => {
+    const r = computeRoutes(twoZones(), {}, stats({
+      "m/dst": { ingot: { medianMin7d: 8, soldPerDay: 0 } },
+    }))[0]!;
+    expect(r.profitPerDay).toBe(0);
+    expect(r.spread).toBe(6);
+  });
+
+  it("flags volatility from either end", () => {
+    const r = computeRoutes(twoZones(), {}, stats({
+      "m/src": { ingot: { cv7d: 0.8 } },
+    }))[0]!;
+    expect(r.volatile).toBe(true);
+  });
+
+  it("behaves exactly as before without stats and flags noHistory", () => {
+    const bare = computeRoutes(twoZones(), { ingot: 100 })[0]!;
+    expect(bare.noHistory).toBe(true);
+    expect(bare.sellEff).toBe(8);
+    expect(bare.spreadEff).toBe(6);
+    expect(bare.profitPerDay).toBeNull();
+    expect(bare.buyAnomaly).toBe(false);
+    expect(bare.volatile).toBe(false);
+  });
+
+  it("sorts history-backed routes by profit/day above no-history routes", () => {
+    const w = world([
+      zone("m", "a", { liquid: rollup(1, 100), mystery: rollup(1, 100) }),
+      zone("m", "b", { liquid: rollup(2, 10), mystery: rollup(50, 10) }),
+    ]);
+    const routes = computeRoutes(w, {}, stats({
+      "m/b": { liquid: { medianMin7d: 2, soldPerDay: 50 } },
+    }));
+    // mystery has a monster raw spread but no history; liquid has real sales.
+    expect(routes.map((r) => r.itemId)).toEqual(["liquid", "mystery"]);
+  });
+});

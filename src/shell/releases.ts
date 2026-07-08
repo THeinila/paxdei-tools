@@ -27,6 +27,55 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-07-08",
+    title: "Is that deal real?",
+    sections: [
+      {
+        tool: "Trade Routes",
+        changes: [
+          {
+            kind: "new",
+            text: "Routes are now ranked by profit per day, not just per trip — a giant margin on something nobody actually buys drops to the bottom where it belongs.",
+          },
+          {
+            kind: "new",
+            text: "A Sold/day column shows how briskly each item moves at the destination (estimated from stock that disappears off the market).",
+          },
+          {
+            kind: "new",
+            text: "Prices are checked against the last week: a suspiciously cheap buy or an unusually high sell gets an anomaly badge, wild swingers get a 'volatile' tag, and the expected profit falls back to the normal price so a momentary spike can't fool you.",
+          },
+          {
+            kind: "new",
+            text: "Expand a route to see 48-hour price sparklines for both ends and when the item last sold.",
+          },
+        ],
+      },
+      {
+        tool: "Craft or Buy",
+        changes: [
+          {
+            kind: "new",
+            text: "The Profit tab now shows how many of each item sell per day and flags 'not selling' traps — high margins that never actually turn over.",
+          },
+          {
+            kind: "improved",
+            text: "Margins are figured against the sustainable weekly price, not a one-off spike, so the numbers hold up.",
+          },
+        ],
+      },
+      {
+        changes: [
+          {
+            kind: "new",
+            text: "The site quietly builds its own price history over time, so these week-long trends and sales estimates keep getting more accurate the longer it runs. (They appear once market data is switched on for this site.)",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-07-07",
     title: "Gold makes the world go round",

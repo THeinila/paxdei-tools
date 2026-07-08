@@ -103,5 +103,60 @@ function migrate(db: DB): void {
       listing_count  INTEGER NOT NULL,
       PRIMARY KEY (world, domain, zone, item_id)
     );
+
+    -- Market history (server/market.ts snapshot processing). The upstream has
+    -- no history or demand endpoints, so both are accumulated here: hourly
+    -- price points (pruned after 72 h) feed sparklines and anomaly detection;
+    -- daily aggregates (pruned after 60 d) feed 7-day medians, volatility,
+    -- and estimated sales. Sales are INFERRED: a listing (stable upstream id)
+    -- that disappears before its lifetime ran out counts as sold — see
+    -- EXPIRY_EPSILON in server/marketUpstream.ts.
+    CREATE TABLE IF NOT EXISTS market_listings (
+      id             TEXT PRIMARY KEY,
+      world          TEXT NOT NULL,
+      domain         TEXT NOT NULL,
+      zone           TEXT NOT NULL,
+      item_id        TEXT NOT NULL,
+      quantity       INTEGER NOT NULL,
+      unit_price     REAL NOT NULL,
+      mastercraft    INTEGER NOT NULL DEFAULT 0,
+      first_seen     TEXT NOT NULL,
+      last_seen      TEXT NOT NULL,
+      lifetime_last  REAL
+    );
+    CREATE INDEX IF NOT EXISTS market_listings_zone
+      ON market_listings (world, domain, zone);
+
+    CREATE TABLE IF NOT EXISTS market_history_hourly (
+      world          TEXT NOT NULL,
+      domain         TEXT NOT NULL,
+      zone           TEXT NOT NULL,
+      item_id        TEXT NOT NULL,
+      snapshot_at    TEXT NOT NULL,
+      min_price      REAL NOT NULL,
+      median_price   REAL NOT NULL,
+      total_qty      INTEGER NOT NULL,
+      listing_count  INTEGER NOT NULL,
+      PRIMARY KEY (world, domain, zone, item_id, snapshot_at)
+    );
+    CREATE INDEX IF NOT EXISTS market_history_hourly_at
+      ON market_history_hourly (snapshot_at);
+
+    CREATE TABLE IF NOT EXISTS market_history_daily (
+      world        TEXT NOT NULL,
+      domain       TEXT NOT NULL,
+      zone         TEXT NOT NULL,
+      item_id      TEXT NOT NULL,
+      day          TEXT NOT NULL,
+      min_min      REAL NOT NULL,
+      median_min   REAL NOT NULL,
+      snapshots    INTEGER NOT NULL,
+      sold_qty     INTEGER NOT NULL DEFAULT 0,
+      sold_value   REAL NOT NULL DEFAULT 0,
+      expired_qty  INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (world, domain, zone, item_id, day)
+    );
+    CREATE INDEX IF NOT EXISTS market_history_daily_day
+      ON market_history_daily (day);
   `);
 }

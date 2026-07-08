@@ -54,7 +54,7 @@ export const tools: Tool[] = [
       "Is it cheaper to buy an item off a market stall or craft it from parts? " +
       "Live-price decision tree for any item, plus a dashboard of what's " +
       "profitable to craft and sell in your zone.",
-    version: "1.0.0",
+    version: "1.1.0",
     element: <CraftOrBuy />,
   },
   {
@@ -64,7 +64,7 @@ export const tools: Tool[] = [
     blurb:
       "Cross-zone price gaps on your server: what to buy cheap in one province " +
       "and sell dear in another, with per-trip profit estimates.",
-    version: "1.0.0",
+    version: "1.1.0",
     element: <TradeRoutes />,
   },
 ];

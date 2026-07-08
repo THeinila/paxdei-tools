@@ -5,6 +5,50 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.3.0] — 2026-07-08
+
+### Toolkit
+- Market history layer. The upstream serves only current listings, so the server now
+  accumulates its own history and infers demand:
+  - New tables (`server/db.ts`): `market_listings` (one row per seen listing, keyed by
+    the stable upstream id), `market_history_hourly` (price points, pruned after 72 h),
+    `market_history_daily` (price aggregates + sold/expired counters, pruned after 60 d).
+  - Snapshot processing (`server/market.ts`): each refresh appends hourly points and
+    diffs listings against the previous snapshot — a listing that vanished while its
+    `lifetime` was still high counts as an estimated **sale**, otherwise expired. All
+    sales are estimates (cancellations are indistinguishable). `EXPIRY_EPSILON` and the
+    `lifetime` decay semantics are flagged for confirmation with the API developer.
+  - Background collector (`server/marketCollector.ts`): keeps every zone within the
+    hourly TTL via batched 5-minute ticks through the shared `MarketService`
+    single-flight, so history accumulates for all zones (not just viewed ones). Runs
+    only when `MARKET_UPSTREAM` ≠ off. A fixtures-mode seeder fabricates 14 days of
+    deterministic history (with engineered anomaly / zero-sales / volatility cases) so
+    dev and preview have data.
+  - New endpoints: `/api/market/world/:world/stats` (7-day ItemStats per zone),
+    `/api/market/history/:world/:domain/:zone/:itemId` (sparkline data); `/prices/...`
+    now carries an optional `stats` block.
+  - `market.ts` split into a reusable `MarketService` + the HTTP router.
+- Shared UI: `Sparkline` (dependency-free SVG), `useWorldStats`/`useItemHistory` hooks,
+  stat-badge styles.
+
+### Trade Routes 1.1.0
+- Prices are now sanity-checked against the last 7 days:
+  - **Profit/day** (new default sort): sustainable spread × estimated units the
+    destination sells per day — a huge margin on an item nobody buys ranks near zero.
+  - **Sold/day** column (estimated from delisted stock).
+  - A dear destination price reverts to its 7-day median before profit is computed.
+  - Badges: buy/sell **price anomaly** (far from the 7-day norm), **volatile**
+    (cv > 0.5), **not selling** (no recent estimated sales), **no history yet**.
+  - New filters: min sold/day, hide anomalies. Expanded row shows 48-h buy/sell
+    sparklines and the last estimated sale.
+
+### Craft or Buy 1.1.0
+- Profit tab gains liquidity + anomaly signals: **Sold/day** column, a **price spike**
+  badge when the current listing sits far above its 7-day norm (margin then uses the
+  sustainable price), a **not selling** badge for zero-sales items, and a min sold/day
+  filter. Margin sorts on the sustainable price; the current-listing margin is in the
+  tooltip.
+
 ## [1.2.0] — 2026-07-07
 
 ### Toolkit

@@ -927,3 +927,45 @@ input[type="number"] {
   color: var(--text);
   border-color: var(--accent);
 }
+
+/* Market history / analysis badges & sparklines */
+
+.stat-badge {
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.stat-badge.anomaly {
+  background: rgba(181, 85, 63, 0.18);
+  color: var(--danger);
+}
+.stat-badge.volatile {
+  background: rgba(200, 137, 58, 0.18);
+  color: var(--accent);
+}
+.stat-badge.stale-sales {
+  background: rgba(168, 153, 127, 0.18);
+  color: var(--muted);
+}
+.stat-badge.nohistory {
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  background: none;
+}
+.sparkline {
+  color: var(--accent-2);
+  vertical-align: middle;
+}
+.route-detail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  align-items: center;
+  padding: 4px 0;
+}
+.route-detail .spark-label {
+  color: var(--muted);
+  font-size: 12px;
+  margin-right: 6px;
+}
