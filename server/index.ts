@@ -8,7 +8,8 @@ import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
-import { createMarketRouter } from "./market.ts";
+import { createMarketRouter, createMarketService } from "./market.ts";
+import { createMarketCollector, seedFixtureHistory } from "./marketCollector.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
 import { rateLimit } from "./rateLimit.ts";
 
@@ -31,9 +32,21 @@ app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_
 // never collide; these planner routes predate that convention and keep /api/lists.
 app.route("/api", createListsRouter(db));
 
-// Cached market prices (read-only). Requires MARKET_UPSTREAM=fixtures|live;
-// with the default (off) only /api/market/status responds.
-app.route("/api/market", createMarketRouter(db));
+// Cached market prices + self-accumulated history (read-only). Requires
+// MARKET_UPSTREAM=fixtures|live; with the default (off) only
+// /api/market/status responds and no collection happens.
+const market = createMarketService(db);
+app.route("/api/market", createMarketRouter(db, { service: market }));
+if (market.mode !== "off") {
+  // Keep all zones' history warm (hourly upstream cadence, batched ticks).
+  createMarketCollector(market).start();
+  if (market.mode === "fixtures") {
+    // Dev/preview: fabricate history so the analysis UI has data to show.
+    void seedFixtureHistory(db, market).catch((e) =>
+      console.warn(`market: fixture history seeding failed: ${e}`),
+    );
+  }
+}
 
 // Aggregate stats, only served when STATS_TOKEN is configured:
 //   curl -H "Authorization: Bearer $STATS_TOKEN" https://<host>/api/stats

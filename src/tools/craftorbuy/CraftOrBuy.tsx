@@ -12,6 +12,7 @@ import { unitCosts, type UnitCost } from "../planner/engine/cost.ts";
 import { MarketBar } from "../../market/MarketBar.tsx";
 import { useMarketStatus, useZonePrices, useZoneSelection } from "../../market/hooks.ts";
 import { formatGold } from "../../market/format.ts";
+import type { ItemStats } from "../../market/client.ts";
 
 export default function CraftOrBuy() {
   const market = useMarketStatus();
@@ -63,7 +64,7 @@ export default function CraftOrBuy() {
           {tab === "explore" ? (
             <Explorer costs={costs} />
           ) : (
-            <Profit costs={costs} prices={zonePrices.data!.prices} />
+            <Profit costs={costs} prices={zonePrices.data!.prices} stats={zonePrices.data!.stats} />
           )}
         </>
       )}
@@ -229,33 +230,46 @@ interface ProfitRow {
   profession: string | null;
   craft: number;
   sell: number;
+  /** Margin against the SUSTAINABLE sell price: min(current, 7-day median). */
   margin: number;
   marginPct: number;
+  /** Margin against the current listing only (tooltip). */
+  marginNow: number;
+  soldPerDay: number | null;
+  sellAnomaly: boolean;
+  noHistory: boolean;
   demandQty: number;
   pricedFully: boolean;
 }
 
-type ProfitSort = "name" | "craft" | "sell" | "margin" | "marginPct";
+type ProfitSort = "name" | "craft" | "sell" | "soldDay" | "margin" | "marginPct";
 
 const PROFIT_SORTS: Record<ProfitSort, (a: ProfitRow, b: ProfitRow) => number> = {
   name: (a, b) => itemName(a.itemId).localeCompare(itemName(b.itemId)),
   craft: (a, b) => a.craft - b.craft,
   sell: (a, b) => b.sell - a.sell,
+  soldDay: (a, b) => (b.soldPerDay ?? -1) - (a.soldPerDay ?? -1),
   margin: (a, b) => b.margin - a.margin,
   marginPct: (a, b) => b.marginPct - a.marginPct,
 };
 
+/** Current sell price this far above its 7-day median → margin likely a mirage. */
+const SELL_ANOMALY_RATIO = 1.5;
+
 function Profit({
   costs,
   prices,
+  stats,
 }: {
   costs: Map<string, UnitCost>;
   prices: Record<string, { min: number; qtyAtMin: number }>;
+  stats?: Record<string, ItemStats>;
 }) {
   const [query, setQuery] = useState("");
   const [profession, setProfession] = useState("");
   const [onlyProfitable, setOnlyProfitable] = useState(true);
   const [onlyFullyPriced, setOnlyFullyPriced] = useState(false);
+  const [minSoldPerDay, setMinSoldPerDay] = useState(0);
   const [sort, setSort] = useState<ProfitSort>("margin");
 
   const rows = useMemo(() => {
@@ -264,7 +278,11 @@ function Profit({
       const cost = costs.get(id);
       const listing = prices[id];
       if (!cost || cost.craft === null || !listing) continue;
-      const margin = listing.min - cost.craft;
+      const s = stats?.[id];
+      // Sell at the sustainable price: a listing far above the weekly norm
+      // will be undercut back down before your crafts sell through.
+      const sellEff = Math.min(listing.min, s?.medianMin7d ?? listing.min);
+      const margin = sellEff - cost.craft;
       out.push({
         itemId: id,
         profession: pickVariant(dataset, id, {})?.profession ?? null,
@@ -272,12 +290,16 @@ function Profit({
         sell: listing.min,
         margin,
         marginPct: cost.craft > 0 ? margin / cost.craft : Number.POSITIVE_INFINITY,
+        marginNow: listing.min - cost.craft,
+        soldPerDay: s ? s.soldPerDay : null,
+        sellAnomaly: s?.medianMin7d != null && listing.min > SELL_ANOMALY_RATIO * s.medianMin7d,
+        noHistory: !s,
         demandQty: listing.qtyAtMin,
         pricedFully: cost.pricedFully,
       });
     }
     return out;
-  }, [costs, prices]);
+  }, [costs, prices, stats]);
 
   const professions = useMemo(
     () => [...new Set(rows.map((r) => r.profession).filter((p): p is string => !!p))].sort(),
@@ -292,10 +314,11 @@ function Profit({
         if (profession && r.profession !== profession) return false;
         if (onlyProfitable && r.margin <= 0) return false;
         if (onlyFullyPriced && !r.pricedFully) return false;
+        if (minSoldPerDay > 0 && (r.soldPerDay ?? 0) < minSoldPerDay) return false;
         return true;
       })
       .sort(PROFIT_SORTS[sort]);
-  }, [rows, query, profession, onlyProfitable, onlyFullyPriced, sort]);
+  }, [rows, query, profession, onlyProfitable, onlyFullyPriced, minSoldPerDay, sort]);
 
   const Th = ({ k, children, num }: { k: ProfitSort; children: React.ReactNode; num?: boolean }) => (
     <th className={`${sort === k ? "sorted" : ""} ${num ? "num" : ""}`} onClick={() => setSort(k)}>
@@ -328,6 +351,15 @@ function Profit({
           />
           fully priced only
         </label>
+        <label>
+          min sold/day
+          <input
+            type="number"
+            min={0}
+            value={minSoldPerDay}
+            onChange={(e) => setMinSoldPerDay(Math.max(0, Number(e.target.value) || 0))}
+          />
+        </label>
         <span className="summary-hint">{shown.length} items</span>
       </div>
 
@@ -338,6 +370,7 @@ function Profit({
             <th>Profession</th>
             <Th k="craft" num>Craft cost</Th>
             <Th k="sell" num>Sells at</Th>
+            <Th k="soldDay" num>Sold/day</Th>
             <Th k="margin" num>Margin</Th>
             <Th k="marginPct" num>%</Th>
           </tr>
@@ -348,6 +381,21 @@ function Profit({
               <td>
                 <span className="item-cell">
                   <ItemLabel itemId={r.itemId} />
+                  {r.sellAnomaly && (
+                    <span className="stat-badge anomaly" title="the current listing is far above the item's 7-day norm — the margin uses the sustainable price instead">
+                      ⚠ price spike
+                    </span>
+                  )}
+                  {r.soldPerDay === 0 && (
+                    <span className="stat-badge stale-sales" title="no estimated sales observed for this item here — a great margin nobody pays">
+                      ∅ not selling
+                    </span>
+                  )}
+                  {r.noHistory && (
+                    <span className="stat-badge nohistory" title="no price history collected yet for this item here">
+                      no history yet
+                    </span>
+                  )}
                 </span>
               </td>
               <td className="meta">{r.profession ?? "—"}</td>
@@ -358,7 +406,17 @@ function Profit({
               <td className="num" title={`${r.demandQty} listed near this price`}>
                 {formatGold(r.sell)}
               </td>
-              <td className="num">
+              <td className="num" title="estimated units sold per day in this zone (from delisted stock)">
+                {r.soldPerDay === null ? "—" : Math.round(r.soldPerDay * 10) / 10}
+              </td>
+              <td
+                className="num"
+                title={
+                  r.marginNow !== r.margin
+                    ? `at the current listing it would be ${formatGold(r.marginNow)}, but that price is above the weekly norm`
+                    : undefined
+                }
+              >
                 <b>{formatGold(r.margin)}</b>
               </td>
               <td className="num">{Number.isFinite(r.marginPct) ? `${Math.round(r.marginPct * 100)}%` : "∞"}</td>

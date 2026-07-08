@@ -3,14 +3,18 @@
  * Passing null as the input disables the fetch (for optional features). */
 import { useEffect, useMemo, useState } from "react";
 import {
+  getItemHistory,
   getMarketStatus,
   getWorldPrices,
+  getWorldStats,
   getZonePrices,
   getZoneTree,
   loadZoneSelection,
   saveZoneSelection,
+  type ItemHistory,
   type MarketStatus,
   type WorldPrices,
+  type WorldStats,
   type ZonePrices,
   type ZoneSelection,
   type ZoneTree,
@@ -64,6 +68,17 @@ export function useZonePrices(sel: ZoneSelection | null): Remote<ZonePrices> {
 
 export function useWorldPrices(world: string | null): Remote<WorldPrices> {
   return useRemote(world ? `world:${world}` : null, () => getWorldPrices(world!));
+}
+
+/** Trailing 7-day per-zone stats for a whole world (arbitrage input). */
+export function useWorldStats(world: string | null): Remote<WorldStats> {
+  return useRemote(world ? `worldstats:${world}` : null, () => getWorldStats(world!));
+}
+
+/** Price/sales history for one item in one zone (sparklines). */
+export function useItemHistory(sel: ZoneSelection | null, itemId: string | null): Remote<ItemHistory> {
+  const key = sel && itemId ? `history:${sel.world}/${sel.domain}/${sel.zone}/${itemId}` : null;
+  return useRemote(key, () => getItemHistory(sel!, itemId!));
 }
 
 /** The user's home market zone, shared across tools and persisted locally

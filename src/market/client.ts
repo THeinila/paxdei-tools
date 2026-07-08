@@ -11,7 +11,16 @@ import type {
   ZoneTree,
 } from "../../shared/marketTypes.ts";
 
-export type { MarketStatus, PriceRollup, WorldPrices, ZonePrices, ZoneTree } from "../../shared/marketTypes.ts";
+export type {
+  ItemHistory,
+  ItemStats,
+  MarketStatus,
+  PriceRollup,
+  WorldPrices,
+  WorldStats,
+  ZonePrices,
+  ZoneTree,
+} from "../../shared/marketTypes.ts";
 
 /** A world/domain/zone triple identifying one market. */
 export interface ZoneSelection {
@@ -55,6 +64,18 @@ export function getZonePrices(sel: ZoneSelection): Promise<ZonePrices> {
 
 export function getWorldPrices(world: string): Promise<WorldPrices> {
   return cached<WorldPrices>(`/api/market/world/${encodeURIComponent(world)}`);
+}
+
+export function getWorldStats(world: string): Promise<import("../../shared/marketTypes.ts").WorldStats> {
+  return cached(`/api/market/world/${encodeURIComponent(world)}/stats`);
+}
+
+export function getItemHistory(
+  sel: ZoneSelection,
+  itemId: string,
+): Promise<import("../../shared/marketTypes.ts").ItemHistory> {
+  const p = [sel.world, sel.domain, sel.zone, itemId].map(encodeURIComponent).join("/");
+  return cached(`/api/market/history/${p}`);
 }
 
 // ---- Persisted zone selection --------------------------------------------------

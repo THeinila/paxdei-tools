@@ -20,15 +20,34 @@ const INDEX_URL = "https://data-cdn.gaming.tools/paxdei/market/index.json";
 const FIXTURES_DIR = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "market");
 
 /** One market-stall listing as upstream serves it. Fields we don't use
- * (id, avatar_hash, stall_hash, creation_date, lifetime, durability,
- * last_seen, world/domain/zone) are omitted from the type but present in the
- * payload. */
+ * (avatar_hash, stall_hash, creation_date, durability, last_seen,
+ * world/domain/zone) are omitted from the type but present in the payload. */
 export interface UpstreamListing {
+  /** Stable listing id (UUID). History tracking diffs snapshots on this. */
+  id: string;
   item_id: string;
   quantity: number;
   price: number;
+  /** Remaining listing lifetime as a fraction (1 = fresh). Drives the
+   * sold-vs-expired heuristic; see EXPIRY_EPSILON. */
+  lifetime?: number;
   /** 1 on mastercrafted (higher-quality) listings; absent otherwise. */
   mastercraft?: number;
+}
+
+/** A listing that vanishes between snapshots while its last known `lifetime`
+ * was still above this counts as an (estimated) SALE; at or below it, as
+ * expired. ASSUMPTION (to confirm with the API developer at go-live): we've
+ * only ever observed lifetime = 1, so the real decay behavior — and whether
+ * near-zero values ever appear in snapshots — is unverified. Cancellations
+ * are indistinguishable from sales either way; all sales are labeled
+ * estimates. */
+export const EXPIRY_EPSILON = 0.05;
+
+/** Unit price of a listing. Single source of the price-semantics assumption:
+ * `price` is the TOTAL for the whole listing (see rollup() below). */
+export function unitPrice(l: Pick<UpstreamListing, "price" | "quantity">): number {
+  return l.price / l.quantity;
 }
 
 export interface ZoneRef {
@@ -112,14 +131,16 @@ const NEAR_MIN = 1.1;
  *
  * Mastercrafted listings are excluded: they're a different quality tier and
  * would pollute the min price of the ordinary item. */
-export function rollup(listings: UpstreamListing[]): Record<string, PriceRollup> {
+export function rollup(
+  listings: Pick<UpstreamListing, "item_id" | "quantity" | "price" | "mastercraft">[],
+): Record<string, PriceRollup> {
   const byItem = new Map<string, { unit: number; qty: number }[]>();
   for (const l of listings) {
     if (l.mastercraft) continue;
     if (typeof l.item_id !== "string" || l.item_id.length === 0) continue;
     if (!Number.isFinite(l.quantity) || l.quantity <= 0) continue;
     if (!Number.isFinite(l.price) || l.price < 0) continue;
-    const unit = l.price / l.quantity;
+    const unit = unitPrice(l);
     const arr = byItem.get(l.item_id) ?? [];
     arr.push({ unit, qty: l.quantity });
     byItem.set(l.item_id, arr);
