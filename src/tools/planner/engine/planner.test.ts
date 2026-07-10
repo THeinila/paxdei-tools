@@ -12,6 +12,7 @@ function item(id: string, isRaw: boolean): Item {
     mainCategoryId: null,
     categories: [],
     tier: null,
+    rarity: null,
     maxStackSize: null,
     isRaw,
   };

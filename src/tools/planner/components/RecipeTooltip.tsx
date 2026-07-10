@@ -48,8 +48,24 @@ export function ItemLabel({
     >
       <Icon item={item} />
       <span className={nameClassName}>{itemName(itemId)}</span>
+      <RarityTag itemId={itemId} />
       {anchor && createPortal(<RecipeTooltip itemId={itemId} anchor={anchor} />, document.body)}
     </div>
+  );
+}
+
+/**
+ * Small colored pill after an item name marking uncommon/rare items. Normal
+ * (common/poor/absent) items render nothing, to keep the UI uncluttered. Used
+ * to disambiguate armor/clothing variants that share the same display name.
+ */
+export function RarityTag({ itemId }: { itemId: string }) {
+  const rarity = getItem(itemId)?.rarity;
+  if (rarity !== "uncommon" && rarity !== "rare") return null;
+  return (
+    <span className={`rarity-tag rarity-${rarity}`}>
+      {rarity === "rare" ? "Rare" : "Uncommon"}
+    </span>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { iconUrl, searchItems } from "../lib/data.ts";
 import type { Item } from "../engine/types.ts";
+import { RarityTag } from "./RecipeTooltip.tsx";
 
 export function Search({ onAdd }: { onAdd: (itemId: string, quantity: number) => void }) {
   const [query, setQuery] = useState("");
@@ -44,6 +45,7 @@ export function Search({ onAdd }: { onAdd: (itemId: string, quantity: number) =>
             <li key={item.id} className="search-row" onClick={() => onAdd(item.id, qtyFor(item.id))}>
               <Icon item={item} />
               <span className="search-name">{item.name}</span>
+              <RarityTag itemId={item.id} />
               <span className="search-cat">{item.isRaw ? "raw material" : item.mainCategoryId}</span>
               <input
                 className="search-qty"

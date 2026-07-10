@@ -41,6 +41,7 @@ interface RawEntity {
   mainCategoryId?: string;
   categories?: string[];
   tier?: number;
+  quality?: string;
   maxStackSize?: number;
 }
 interface RawRecipe {
@@ -88,6 +89,7 @@ function toItem(e: RawEntity): Item {
     mainCategoryId: e.mainCategoryId ?? null,
     categories: e.categories ?? [],
     tier: e.tier ?? null,
+    rarity: null, // set from the item's own output entity in the recipe loop
     maxStackSize: e.maxStackSize ?? null,
     isRaw: true, // refined below once we know which items have recipes
   };
@@ -116,6 +118,15 @@ function main() {
     }
     if (ings.length === 0) continue;
     recordItem(out.entity);
+    // Rarity comes from the item's own output entity (an item first seen as a
+    // trimmed ingredient reference carries no quality), so set it here.
+    const outItem = items.get(outId);
+    if (outItem) {
+      outItem.rarity =
+        out.entity?.quality === "uncommon" ? "uncommon"
+        : out.entity?.quality === "rare" ? "rare"
+        : null;
+    }
     parsed.push({
       outputItemId: outId,
       recipeId: r.id,
@@ -137,6 +148,7 @@ function main() {
       mainCategoryId: null,
       categories: [],
       tier: null,
+      rarity: null,
       maxStackSize: m?.stackSize ?? null,
       isRaw: true,
     });
