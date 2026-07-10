@@ -8,6 +8,8 @@
   --accent: #c8893a;
   --accent-2: #6f9b5a;
   --danger: #b5553f;
+  --rarity-uncommon: #6f9b5a;
+  --rarity-rare: #5a86c8;
   color-scheme: dark;
 }
 
@@ -530,6 +532,21 @@ h2 {
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1px 5px;
+}
+.rarity-tag {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 6px;
+}
+.rarity-uncommon {
+  color: var(--rarity-uncommon);
+}
+.rarity-rare {
+  color: var(--rarity-rare);
 }
 .rt-raw {
   color: var(--muted);

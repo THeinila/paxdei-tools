@@ -11,6 +11,8 @@ export interface Item {
   categories: string[];
   /** Item tier (1..n) where present. */
   tier: number | null;
+  /** Item rarity from upstream quality; null when common/poor/absent. */
+  rarity: "uncommon" | "rare" | null;
   maxStackSize: number | null;
   /** True when no kept recipe outputs this item — i.e. it must be gathered. */
   isRaw: boolean;
