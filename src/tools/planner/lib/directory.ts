@@ -12,7 +12,7 @@
  * it's promoted to a shared list (see `promoteLocalEntry`). */
 import type { ListState } from "./useList.ts";
 import { readKey, removeKey, writeKey } from "./storage.ts";
-import { createList } from "./api.ts";
+import { VersionConflict, createList, getList, patchList } from "./api.ts";
 import { getHandle } from "./handle.ts";
 
 const INDEX_KEY = "paxdei-planner:lists:v1";
@@ -97,6 +97,25 @@ export function updateEntry(id: string, patch: Partial<Omit<ListEntry, "id">>): 
   const next: ListEntry = { ...cur, ...patch, updatedAt: patch.updatedAt ?? new Date().toISOString() };
   saveIndex(entries.map((e) => (e.id === id ? next : e)));
   return next;
+}
+
+/** Rename a list from the directory. Updates the local card label immediately,
+ * then — for a shared list — pushes the new name into the server definition with
+ * a version-guarded PATCH (rebasing once on a concurrent edit). A not-yet-migrated
+ * legacy local list has no server copy yet; it adopts its name on promotion. */
+export async function renameEntry(entry: ListEntry, name: string): Promise<void> {
+  updateEntry(entry.id, { name });
+  if (!entry.shareToken) return;
+  try {
+    const snap = await getList(entry.shareToken);
+    await patchList(entry.shareToken, { ...snap.state, name }, snap.version);
+  } catch (e) {
+    if (e instanceof VersionConflict) {
+      await patchList(entry.shareToken, { ...e.current.state, name }, e.current.version);
+    } else {
+      throw e;
+    }
+  }
 }
 
 // --- Legacy local content (read-only, for migration) -------------------------

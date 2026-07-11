@@ -9,10 +9,11 @@ import {
   createShared,
   deleteEntry,
   duplicate,
+  getEntry,
   listEntries,
   listKey,
   loadContent,
-  updateEntry,
+  renameEntry,
   type ListEntry,
 } from "./lib/directory.ts";
 import { getList } from "./lib/api.ts";
@@ -76,12 +77,17 @@ export default function PlannerHome() {
     setDraftName(entry.name);
   }
 
-  function commitRename(id: string) {
-    // Updates only the local card label; the authoritative name lives on the
-    // server and is edited from the list's title field inside the editor.
+  async function commitRename(id: string) {
     const name = draftName.trim() || DEFAULT_NAME;
-    updateEntry(id, { name });
     setEditingId(null);
+    const entry = getEntry(id);
+    if (entry) {
+      try {
+        await renameEntry(entry, name);
+      } catch (e) {
+        alert(`Could not rename the list: ${e instanceof Error ? e.message : e}`);
+      }
+    }
     refresh();
   }
 

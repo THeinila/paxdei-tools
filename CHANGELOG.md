@@ -23,6 +23,8 @@ See [RELEASING.md](RELEASING.md) for how versions are bumped.
 - Backward compatible: `?list=<token>` links redirect to `/planner/<token>`; old
   `/planner/<uuid>` bookmarks still resolve; existing local lists are promoted to shared
   lists on first open (content preserved), keyed by the unguessable 128-bit token.
+- Renaming a list from a directory card now pushes the new name to the shared list
+  (version-guarded), so collaborators see it — not just a local relabel.
 
 ## [1.1.0] — 2026-07-07
 
