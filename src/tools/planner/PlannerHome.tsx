@@ -1,18 +1,17 @@
 /** The Crafting Planner's main page: a directory of the lists you've created and
- * the shared lists you've opened. "Create a new list" drops into the editor; each
- * card opens / renames / duplicates / deletes a list. Opening a legacy
- * `?list=<token>` share link adopts it into the directory, then redirects to it. */
+ * the shared lists you've opened. "Create a new list" makes a server-backed list
+ * and drops into the editor; each card opens / renames / duplicates / removes a
+ * list. Opening a legacy `?list=<token>` share link redirects to `/planner/<token>`. */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   DEFAULT_NAME,
-  createLocal,
+  createShared,
   deleteEntry,
   duplicate,
-  findOrCreateForToken,
   listEntries,
+  listKey,
   loadContent,
-  saveContent,
   updateEntry,
   type ListEntry,
 } from "./lib/directory.ts";
@@ -42,15 +41,16 @@ export default function PlannerHome() {
   const [entries, setEntries] = useState<ListEntry[]>(() => listEntries());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const refresh = () => setEntries(listEntries());
 
-  // Adopt a legacy/share link (`?list=<token>`) into the directory and open it.
+  // Redirect a legacy share link (`?list=<token>`) to the canonical token URL;
+  // the editor there adopts the token into the directory.
   const token = params.get("list");
   useEffect(() => {
     if (!token) return;
-    const entry = findOrCreateForToken(token);
-    navigate(`/planner/${entry.id}`, { replace: true });
+    navigate(`/planner/${token}`, { replace: true });
   }, [token, navigate]);
 
   const sorted = useMemo(
@@ -58,9 +58,17 @@ export default function PlannerHome() {
     [entries],
   );
 
-  function onCreate() {
-    const entry = createLocal();
-    navigate(`/planner/${entry.id}`);
+  async function onCreate() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const entry = await createShared();
+      navigate(`/planner/${listKey(entry)}`);
+    } catch (e) {
+      alert(`Could not create a list: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function startRename(entry: ListEntry) {
@@ -69,38 +77,45 @@ export default function PlannerHome() {
   }
 
   function commitRename(id: string) {
+    // Updates only the local card label; the authoritative name lives on the
+    // server and is edited from the list's title field inside the editor.
     const name = draftName.trim() || DEFAULT_NAME;
     updateEntry(id, { name });
-    // Keep the local content's name in sync; shared lists rename inside the editor.
-    const entry = listEntries().find((e) => e.id === id);
-    if (entry && entry.kind === "local") {
-      saveContent(id, { ...loadContent(id), name });
-    }
     setEditingId(null);
     refresh();
   }
 
   async function onDuplicate(entry: ListEntry) {
+    if (busy) return;
     let def = { targets: [] as ReturnType<typeof loadContent>["targets"], pathChoices: {} as Record<string, string> };
-    if (entry.kind === "local") {
-      const content = loadContent(entry.id);
-      def = { targets: content.targets, pathChoices: content.pathChoices };
-    } else if (entry.shareToken) {
+    if (entry.shareToken) {
       try {
         const snap = await getList(entry.shareToken);
         def = { targets: snap.state.targets, pathChoices: snap.state.pathChoices };
       } catch {
-        alert("Could not load the shared list to duplicate.");
+        alert("Could not load the list to duplicate.");
         return;
       }
+    } else {
+      // Legacy local list not yet promoted: duplicate straight from its content.
+      const content = loadContent(entry.id);
+      def = { targets: content.targets, pathChoices: content.pathChoices };
     }
-    duplicate(entry.name, def);
-    refresh();
+    setBusy(true);
+    try {
+      await duplicate(entry.name, def);
+      refresh();
+    } catch (e) {
+      alert(`Could not duplicate the list: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function onDelete(entry: ListEntry) {
-    const what = entry.kind === "shared" ? "Remove this shared list from your directory?" : `Delete "${entry.name}"?`;
-    if (!window.confirm(what)) return;
+    // Removing only drops the list from this browser's directory; the shared list
+    // itself lives on until everyone forgets its link.
+    if (!window.confirm(`Remove "${entry.name || DEFAULT_NAME}" from your lists?`)) return;
     deleteEntry(entry.id);
     refresh();
   }
@@ -115,8 +130,8 @@ export default function PlannerHome() {
           {plannerVersion && <span className="tool-version">v{plannerVersion}</span>}
         </h2>
         <div className="header-actions">
-          <button className="share-btn" onClick={onCreate}>
-            + Create a new list
+          <button className="share-btn" onClick={onCreate} disabled={busy}>
+            {busy ? "Working…" : "+ Create a new list"}
           </button>
         </div>
       </div>
@@ -140,10 +155,9 @@ export default function PlannerHome() {
                   }}
                 />
               ) : (
-                <button className="list-card-open" onClick={() => navigate(`/planner/${entry.id}`)}>
+                <button className="list-card-open" onClick={() => navigate(`/planner/${listKey(entry)}`)}>
                   <span className="list-card-name">{entry.name || DEFAULT_NAME}</span>
                   <span className="list-card-meta">
-                    {entry.kind === "shared" && <span className="list-badge">shared</span>}
                     {entry.targetCount} item{entry.targetCount === 1 ? "" : "s"} · {relativeTime(entry.updatedAt)}
                   </span>
                 </button>

@@ -1,37 +1,104 @@
-import { useEffect, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Search } from "./components/Search.tsx";
 import { PlanView } from "./components/PlanView.tsx";
 import { Row } from "./components/Row.tsx";
 import { useList } from "./lib/useList.ts";
-import { createList } from "./lib/api.ts";
-import { ensureHandle, getHandle, promptHandle } from "./lib/handle.ts";
-import { DEFAULT_NAME, getEntry, updateEntry } from "./lib/directory.ts";
+import { getHandle, promptHandle } from "./lib/handle.ts";
+import {
+  DEFAULT_NAME,
+  findOrCreateForToken,
+  promoteLocalEntry,
+  resolveEntry,
+  updateEntry,
+} from "./lib/directory.ts";
 
+// A share token is base64url of 16 random bytes → 22 chars. A legacy local id is
+// a UUID (dashes) or an `l_…` fallback, so this cleanly tells an unknown-but-
+// adoptable token apart from a dead local bookmark.
+const TOKEN_RE = /^[A-Za-z0-9_-]{20,24}$/;
+
+/** Resolve the `/planner/:listId` param to a shared list, then render the editor.
+ * The param may be a share token (canonical), a legacy local id/bookmark, or an
+ * unknown token opened from a share link. */
 export default function Planner() {
   const { listId = "" } = useParams();
-  const entry = getEntry(listId);
-  const [token, setToken] = useState<string | null>(entry?.shareToken ?? null);
-  const { state, result, mode, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
-    useList(listId, token);
-  const [shareBusy, setShareBusy] = useState(false);
+  const navigate = useNavigate();
+  const [resolved, setResolved] = useState<{ token: string; entryId: string } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const promoting = useRef(false); // guard the async promotion against StrictMode double-invoke
+
+  useEffect(() => {
+    setResolved(null);
+    setFailed(false);
+    const entry = resolveEntry(listId);
+
+    if (entry?.shareToken) {
+      // Known shared list. Canonicalize an old `/planner/<uuid>` bookmark to the token URL.
+      if (listId !== entry.shareToken) {
+        navigate(`/planner/${entry.shareToken}`, { replace: true });
+        return;
+      }
+      setResolved({ token: entry.shareToken, entryId: entry.id });
+      return;
+    }
+
+    if (entry) {
+      // Legacy local list: promote it server-side, then move to its token URL.
+      if (promoting.current) return;
+      promoting.current = true;
+      let cancelled = false;
+      promoteLocalEntry(entry)
+        .then((updated) => {
+          if (!cancelled && updated.shareToken) {
+            navigate(`/planner/${updated.shareToken}`, { replace: true });
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setFailed(true);
+        })
+        .finally(() => {
+          promoting.current = false;
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (TOKEN_RE.test(listId)) {
+      // Recipient's first open of a share link: adopt it and stay on this URL.
+      const adopted = findOrCreateForToken(listId);
+      setResolved({ token: listId, entryId: adopted.id });
+      return;
+    }
+
+    setFailed(true);
+  }, [listId, navigate]);
+
+  if (failed) return <Navigate to="/planner" replace />;
+  if (!resolved) return <p className="hint">Opening list…</p>;
+  return <ListEditor key={resolved.token} token={resolved.token} entryId={resolved.entryId} />;
+}
+
+/** The list editor. Always operates on a shared, server-backed list. */
+function ListEditor({ token, entryId }: { token: string; entryId: string }) {
+  const { state, result, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
+    useList(token);
   const [copied, setCopied] = useState(false);
   const [handle, setHandleState] = useState<string | null>(getHandle());
   const [titleDraft, setTitleDraft] = useState(state.name);
 
   // Keep the title input in sync when the name changes externally (e.g. a poll
-  // on a shared list adopts a collaborator's rename).
+  // adopts a collaborator's rename).
   useEffect(() => setTitleDraft(state.name), [state.name]);
 
   // Mirror the live state into the directory entry so the cards stay current.
-  // Wait until a shared list has hydrated (ready, no load error) so we don't
-  // overwrite its cached name/count with the empty pre-poll/failed state.
+  // Wait until the list has hydrated (ready, no load error) so we don't overwrite
+  // its cached name/count with the empty pre-poll/failed state.
   useEffect(() => {
-    if (!entry || !ready || (mode === "shared" && error)) return;
-    updateEntry(listId, { name: state.name || DEFAULT_NAME, targetCount: state.targets.length });
-  }, [entry, ready, mode, error, listId, state.name, state.targets.length]);
-
-  if (!entry) return <Navigate to="/planner" replace />;
+    if (!ready || error) return;
+    updateEntry(entryId, { name: state.name || DEFAULT_NAME, targetCount: state.targets.length });
+  }, [ready, error, entryId, state.name, state.targets.length]);
 
   function commitTitle() {
     const name = titleDraft.trim() || DEFAULT_NAME;
@@ -39,37 +106,11 @@ export default function Planner() {
     setTitleDraft(name);
   }
 
-  async function onShare() {
+  async function copyLink() {
     setCopied(false);
-    if (mode === "shared" && token) {
-      await copyLink(token);
-      return;
-    }
-    // First share: persist the local list, attribute seeded stock to the handle.
-    setShareBusy(true);
+    const url = `${window.location.origin}/planner/${token}`;
     try {
-      const who = ensureHandle();
-      setHandleState(who);
-      const created = await createList(
-        { name: state.name, targets: state.targets, pathChoices: state.pathChoices },
-        state.owned,
-        who,
-      );
-      updateEntry(listId, { kind: "shared", shareToken: created.token });
-      setToken(created.token); // re-mounts useList in shared mode
-      await copyLink(created.token);
-    } catch (e) {
-      alert(`Could not create a shared list: ${e instanceof Error ? e.message : e}`);
-    } finally {
-      setShareBusy(false);
-    }
-  }
-
-  async function copyLink(t: string) {
-    const url = new URL(window.location.origin + "/planner");
-    url.searchParams.set("list", t);
-    try {
-      await navigator.clipboard.writeText(url.toString());
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -101,23 +142,21 @@ export default function Planner() {
           }}
         />
         <div className="header-actions">
-          {mode === "shared" && (
-            <span className="share-badge">
-              shared{handle ? ` · ${handle}` : ""}
-              <button className="link-btn" onClick={onRename}>
-                {handle ? "rename" : "set name"}
-              </button>
-            </span>
-          )}
-          <button className="share-btn" onClick={onShare} disabled={shareBusy || state.targets.length === 0}>
-            {copied ? "Link copied!" : mode === "shared" ? "Copy link" : shareBusy ? "Sharing…" : "Share"}
+          <span className="share-badge">
+            {handle && <span className="share-handle">{handle}</span>}
+            <button className="link-btn" onClick={onRename}>
+              {handle ? "rename" : "set your name"}
+            </button>
+          </span>
+          <button className="share-btn" onClick={copyLink}>
+            {copied ? "Link copied!" : "Copy link"}
           </button>
         </div>
       </div>
 
-      {mode === "shared" && error && <div className="warning">⚠ {error}</div>}
-      {mode === "shared" && !ready ? (
-        <p className="hint">Loading shared list…</p>
+      {error && <div className="warning">⚠ {error}</div>}
+      {!ready ? (
+        <p className="hint">Loading list…</p>
       ) : (
         <>
           <Search onAdd={(id, qty) => addTarget(id, qty)} />

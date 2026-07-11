@@ -5,6 +5,25 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.2.0] — 2026-07-11
+
+### Toolkit
+- Static SPA now sets explicit `Cache-Control`: fingerprinted `/assets/*` are
+  `immutable`, but `index.html` is `no-cache`, so a redeploy is picked up on the next
+  load instead of serving a stale cached bundle. This fixes share links opening the
+  landing page until a hard refresh (`server/index.ts`).
+- Rate limits retuned for server-backed list creation: general `/api/*` 120→60/min,
+  `POST /api/lists` 10→600/hour (`server/index.ts`).
+
+### Crafting Planner 1.2.0
+- Every list is now a shared, server-backed list with a single canonical
+  `/planner/<token>` URL — the open list's address bar *is* its share link. The old
+  split (local `/planner/<uuid>` vs. shared `?list=<token>`) is gone; the `useList`
+  local mode and localStorage list bodies are removed.
+- Backward compatible: `?list=<token>` links redirect to `/planner/<token>`; old
+  `/planner/<uuid>` bookmarks still resolve; existing local lists are promoted to shared
+  lists on first open (content preserved), keyed by the unguessable 128-bit token.
+
 ## [1.1.0] — 2026-07-07
 
 ### Toolkit

@@ -40,7 +40,7 @@ export const tools: Tool[] = [
       "Search items, build a crafting list, and get a flattened plan of every raw " +
       "material to gather and intermediate to craft — with owned stock subtracted. " +
       "Share a link to divide the work with your group.",
-    version: "1.1.0",
+    version: "1.2.0",
     element: <PlannerHome />,
     children: [{ path: ":listId", element: <PlannerRoute /> }],
   },

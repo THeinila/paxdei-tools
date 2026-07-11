@@ -35,11 +35,13 @@ const cacheHeaders = (path: string, c: Context) => {
 app.use("*", visitorTracking(db));
 
 // Hardening for the exposed (tunneled) API. State payloads are small, so cap the
-// body well under anything legitimate; rate-limit all writes, and throttle list
-// creation harder since it's the one unauthenticated endpoint that grows the DB.
+// body well under anything legitimate, and rate-limit per client. Every list is
+// now created server-side (a new list, a duplicate, a legacy-list migration), so
+// the create cap is generous — abuse is still bounded by the per-minute cap and
+// the tiny per-list payload.
 app.use("/api/*", bodyLimit({ maxSize: 64 * 1024 }));
-app.use("/api/*", rateLimit({ name: "api", limit: 120, windowMs: 60_000 }));
-app.post("/api/lists", rateLimit({ name: "create", limit: 10, windowMs: 60 * 60_000 }));
+app.use("/api/*", rateLimit({ name: "api", limit: 60, windowMs: 60_000 }));
+app.post("/api/lists", rateLimit({ name: "create", limit: 600, windowMs: 60 * 60_000 }));
 
 // The crafting planner's API. As the suite grows, each tool mounts its own
 // router under its own namespace (e.g. app.route("/api/<tool>", ...)) so routes
