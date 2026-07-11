@@ -1,16 +1,10 @@
-/** Crafting list state with two modes:
+/** Crafting list state for a shared, server-backed list.
  *
- *  - Local (token === null): targets/owned/pathChoices in localStorage, exactly
- *    as the single-user MVP worked.
- *  - Shared (token set): the list lives server-side. The definition
- *    (targets + pathChoices) is edited with version-guarded PATCHes; the per-item
- *    "have" map is collaborative progress written as atomic additive deltas.
- *    `owned` is DERIVED from the progress map (never stored separately), so the
- *    two can't drift. Clients poll every few seconds.
- *
- * The public surface stays source-compatible with the local MVP — `owned` and
- * `setOwned` carry the have-map in both modes — so PlanView/App need only minor
- * additions (attribution + share UX). */
+ * Every list lives server-side, addressed by its share token. The definition
+ * (name + targets + pathChoices) is edited with version-guarded PATCHes; the
+ * per-item "have" map is collaborative progress written as atomic additive
+ * deltas. `owned` is DERIVED from the progress map (never stored separately), so
+ * the two can't drift. Clients poll every few seconds. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dataset } from "./data.ts";
 import { plan, type Target } from "../engine/planner.ts";
@@ -23,7 +17,6 @@ import {
   type ProgressEntry,
 } from "./api.ts";
 import { ensureHandle } from "./handle.ts";
-import { loadContent, saveContent } from "./directory.ts";
 
 export interface ListState {
   name: string;
@@ -32,7 +25,6 @@ export interface ListState {
   pathChoices: Record<string, string>;
 }
 
-export type Mode = "local" | "shared";
 export type ProgressMap = Record<string, ProgressEntry>;
 
 const POLL_MS = 3000;
@@ -77,7 +69,6 @@ function indexProgress(entries: ProgressEntry[]): ProgressMap {
 export interface UseList {
   state: ListState;
   result: ReturnType<typeof plan>;
-  mode: Mode;
   progress: ProgressMap;
   ready: boolean;
   error: string | null;
@@ -89,13 +80,11 @@ export interface UseList {
   clear: () => void;
 }
 
-/** Identify the list to operate on: a directory `id` (for localStorage content)
- * and an optional share `token` (present iff the list is shared). */
-export function useList(id: string, token: string | null): UseList {
-  const mode: Mode = token ? "shared" : "local";
-  const [state, setState] = useState<ListState>(() => (token ? EMPTY : loadContent(id)));
+/** Operate on the shared list identified by its share `token`. */
+export function useList(token: string): UseList {
+  const [state, setState] = useState<ListState>(EMPTY);
   const [progress, setProgress] = useState<ProgressMap>({});
-  const [ready, setReady] = useState(!token); // local is ready immediately
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const versionRef = useRef(0);
@@ -113,13 +102,7 @@ export function useList(id: string, token: string | null): UseList {
     defRef.current = { name: state.name, targets: state.targets, pathChoices: state.pathChoices };
   }, [state.name, state.targets, state.pathChoices]);
 
-  // --- Local mode: persist to localStorage -----------------------------------
-  useEffect(() => {
-    if (mode !== "local") return;
-    saveContent(id, state);
-  }, [mode, id, state]);
-
-  // --- Shared mode: hydrate + poll -------------------------------------------
+  // --- Hydrate + poll --------------------------------------------------------
   const applySnapshot = useCallback(
     (snap: { version: number; state: ListStateDef; progress: ProgressEntry[] }, adoptDef: boolean) => {
       versionRef.current = snap.version;
@@ -137,7 +120,6 @@ export function useList(id: string, token: string | null): UseList {
   );
 
   useEffect(() => {
-    if (!token) return;
     let cancelled = false;
     setReady(false);
     setError(null);
@@ -174,7 +156,6 @@ export function useList(id: string, token: string | null): UseList {
       const next = fn(defRef.current);
       defRef.current = next;
       setState((s) => ({ ...s, name: next.name, targets: next.targets, pathChoices: next.pathChoices }));
-      if (!token) return;
 
       pendingEdits.current += 1;
       void (async () => {
@@ -231,19 +212,10 @@ export function useList(id: string, token: string | null): UseList {
     [editDef],
   );
 
-  // --- The "have" map: local owned, or collaborative progress deltas ---------
+  // --- The "have" map: collaborative progress deltas -------------------------
   const setOwned = useCallback(
     (itemId: string, qty: number) => {
-      if (!token) {
-        setState((s) => {
-          const owned = { ...s.owned };
-          if (qty > 0) owned[itemId] = qty;
-          else delete owned[itemId];
-          return { ...s, owned };
-        });
-        return;
-      }
-      // Shared: write the delta from what we currently show, attributed to the handle.
+      // Write the delta from what we currently show, attributed to the handle.
       const handle = ensureHandle();
       if (!handle) return;
       const current = progress[itemId]?.qty ?? 0;
@@ -268,27 +240,19 @@ export function useList(id: string, token: string | null): UseList {
     [token, progress],
   );
 
-  // In shared mode `owned` is a pure projection of the progress map; local mode
-  // keeps its own owned in state.
-  const owned = useMemo(
-    () => (token ? progressToOwned(progress) : state.owned),
-    [token, progress, state.owned],
-  );
+  // `owned` is a pure projection of the collaborative progress map.
+  const owned = useMemo(() => progressToOwned(progress), [progress]);
 
   const result = useMemo(
     () => plan(dataset, state.targets, { owned, pathChoices: state.pathChoices }),
     [state.targets, state.pathChoices, owned],
   );
 
-  const exposedState = useMemo(
-    () => (token ? { ...state, owned } : state),
-    [token, state, owned],
-  );
+  const exposedState = useMemo(() => ({ ...state, owned }), [state, owned]);
 
   return {
     state: exposedState,
     result,
-    mode,
     progress,
     ready,
     error,

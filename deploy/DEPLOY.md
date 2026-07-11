@@ -128,8 +128,11 @@ without it `dist/icons/` is empty and all item images 404.
 
 - Only 22/80/443 are public; never expose the app port (8787) in the Security List.
 - The exposed-API hardening (body cap + rate limits, `server/index.ts`) still
-  applies. The one unauthenticated, DB-growing endpoint is `POST /api/lists`; fine
-  for a known ≤20-person group. If abuse appears, add a shared-secret env gate.
+  applies. Every list is server-backed, so `POST /api/lists` (the one unauthenticated,
+  DB-growing endpoint) now runs on every new list, duplicate, and legacy-list
+  migration; its cap is a generous 600/hour/client, with the general 60/min/client cap
+  bounding bursts. Fine for a known ≤20-person group. If abuse appears, add a
+  shared-secret env gate.
 - Enable `unattended-upgrades` for OS patches.
 
 ## Usage metrics

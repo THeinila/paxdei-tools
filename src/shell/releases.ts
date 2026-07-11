@@ -27,6 +27,30 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-07-11",
+    title: "One link for every list",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "improved",
+            text: "Every list now has a single link that works for everyone — the address bar of a list you're viewing is exactly the link you share. No more separate \"share\" step or two different URLs.",
+          },
+          {
+            kind: "fixed",
+            text: "Opening a shared link no longer sometimes lands on the home page: after an update the app now refreshes itself instead of running an old cached version.",
+          },
+          {
+            kind: "improved",
+            text: "Your existing lists are carried over automatically the first time you open them — nothing to re-create.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-07-07",
     title: "The hunt is on",

@@ -1,12 +1,19 @@
 /** The user's directory of crafting lists, stored in localStorage.
  *
- * The index (`paxdei-planner:lists:v1`) is a lightweight array of entries — just
- * enough to render the directory cards without loading each list's content. A
- * local list's content lives under `paxdei-planner:list:<id>`; a shared list's
- * content lives server-side (the entry only keeps its share token + cached
- * name/count). A local list that gets shared keeps its `id` and flips `kind`. */
+ * Every list is server-backed: it's created via POST /api/lists and lives at
+ * `/planner/<token>`, the unguessable token being the only capability needed.
+ * The index (`paxdei-planner:lists:v1`) is a lightweight, per-browser array of
+ * entries — just the share token plus a cached name/count — enough to render the
+ * directory cards without fetching each list.
+ *
+ * `kind` and the local-content helpers (`loadContent`) survive only to recognize
+ * and migrate lists from the pre-share era: a legacy `kind: "local"` entry keeps
+ * its content under `paxdei-planner:list:<id>` until it's opened, at which point
+ * it's promoted to a shared list (see `promoteLocalEntry`). */
 import type { ListState } from "./useList.ts";
 import { readKey, removeKey, writeKey } from "./storage.ts";
+import { VersionConflict, createList, getList, patchList } from "./api.ts";
+import { getHandle } from "./handle.ts";
 
 const INDEX_KEY = "paxdei-planner:lists:v1";
 const CONTENT_PREFIX = "paxdei-planner:list:";
@@ -58,8 +65,20 @@ export function getEntry(id: string): ListEntry | undefined {
   return listEntries().find((e) => e.id === id);
 }
 
-function findEntryByToken(token: string): ListEntry | undefined {
+export function findEntryByToken(token: string): ListEntry | undefined {
   return listEntries().find((e) => e.shareToken === token);
+}
+
+/** The URL key for a list: its share token (canonical) or, for a not-yet-migrated
+ * legacy local list, its local id. Every list link is built from this. */
+export function listKey(entry: ListEntry): string {
+  return entry.shareToken ?? entry.id;
+}
+
+/** Resolve a `/planner/:key` route param, which may be a share token (canonical)
+ * or a legacy local id / bookmark. */
+export function resolveEntry(key: string): ListEntry | undefined {
+  return getEntry(key) ?? findEntryByToken(key);
 }
 
 /** Insert or replace an entry, leaving the rest untouched. */
@@ -80,7 +99,26 @@ export function updateEntry(id: string, patch: Partial<Omit<ListEntry, "id">>): 
   return next;
 }
 
-// --- Content (local lists only) ----------------------------------------------
+/** Rename a list from the directory. Updates the local card label immediately,
+ * then — for a shared list — pushes the new name into the server definition with
+ * a version-guarded PATCH (rebasing once on a concurrent edit). A not-yet-migrated
+ * legacy local list has no server copy yet; it adopts its name on promotion. */
+export async function renameEntry(entry: ListEntry, name: string): Promise<void> {
+  updateEntry(entry.id, { name });
+  if (!entry.shareToken) return;
+  try {
+    const snap = await getList(entry.shareToken);
+    await patchList(entry.shareToken, { ...snap.state, name }, snap.version);
+  } catch (e) {
+    if (e instanceof VersionConflict) {
+      await patchList(entry.shareToken, { ...e.current.state, name }, e.current.version);
+    } else {
+      throw e;
+    }
+  }
+}
+
+// --- Legacy local content (read-only, for migration) -------------------------
 
 export function loadContent(id: string): ListState {
   const raw = readKey(contentKey(id));
@@ -94,52 +132,75 @@ export function loadContent(id: string): ListState {
   return { ...EMPTY_CONTENT };
 }
 
-export function saveContent(id: string, state: ListState): void {
-  writeKey(contentKey(id), JSON.stringify(state));
-}
-
 function removeContent(id: string): void {
   removeKey(contentKey(id));
 }
 
 // --- Lifecycle ---------------------------------------------------------------
 
-export function createLocal(name: string = DEFAULT_NAME): ListEntry {
+/** Create a new list server-side and record it in the directory. Optionally
+ * seeded (name/targets/pathChoices/owned) — used both for a blank "new list" and
+ * for Duplicate. Creation is anonymous (handle attached only if one is already
+ * set); the handle prompt is reserved for the first progress contribution. */
+export async function createShared(seed?: {
+  name?: string;
+  targets?: ListState["targets"];
+  pathChoices?: ListState["pathChoices"];
+  owned?: Record<string, number>;
+}): Promise<ListEntry> {
+  const name = seed?.name?.trim() || DEFAULT_NAME;
+  const targets = seed?.targets ?? [];
+  const pathChoices = seed?.pathChoices ?? {};
+  const created = await createList({ name, targets, pathChoices }, seed?.owned ?? {}, getHandle());
   const ts = new Date().toISOString();
   const entry: ListEntry = {
     id: newId(),
     name,
-    kind: "local",
-    targetCount: 0,
+    kind: "shared",
+    shareToken: created.token,
+    targetCount: targets.length,
     createdAt: ts,
     updatedAt: ts,
   };
   putEntry(entry);
-  saveContent(entry.id, { ...EMPTY_CONTENT, name });
   return entry;
+}
+
+/** Promote a legacy local list to a shared one in place: create it server-side
+ * from its stored content, flip the existing entry to carry the share token, and
+ * drop the now-obsolete local content. Keeps the entry id so directory identity
+ * and any `/planner/<id>` bookmark stay valid. */
+export async function promoteLocalEntry(entry: ListEntry): Promise<ListEntry> {
+  const content = loadContent(entry.id);
+  const created = await createList(
+    { name: content.name, targets: content.targets, pathChoices: content.pathChoices },
+    content.owned,
+    getHandle(),
+  );
+  const updated = updateEntry(entry.id, {
+    kind: "shared",
+    shareToken: created.token,
+    name: content.name || DEFAULT_NAME,
+    targetCount: content.targets.length,
+  });
+  removeContent(entry.id);
+  return updated ?? entry;
 }
 
 export function deleteEntry(id: string): void {
   const entries = listEntries().filter((e) => e.id !== id);
   saveIndex(entries);
-  removeContent(id); // harmless if it was a shared (no local content) list
+  removeContent(id); // harmless if it was already a shared (no local content) list
 }
 
-/** Duplicate a list as a new LOCAL list from a definition (targets + pathChoices,
- * never progress). The caller supplies the source definition so this works for
- * both local lists and the current snapshot of a shared one. */
+/** Duplicate a list as a new list from a definition (targets + pathChoices, never
+ * progress). The caller supplies the source definition so this works from the
+ * current snapshot of any list. */
 export function duplicate(
   name: string,
   def: { targets: ListState["targets"]; pathChoices: ListState["pathChoices"] },
-): ListEntry {
-  const entry = createLocal(`${name} (copy)`);
-  saveContent(entry.id, {
-    name: entry.name,
-    targets: def.targets,
-    owned: {},
-    pathChoices: def.pathChoices,
-  });
-  return updateEntry(entry.id, { targetCount: def.targets.length }) ?? entry;
+): Promise<ListEntry> {
+  return createShared({ name: `${name} (copy)`, targets: def.targets, pathChoices: def.pathChoices });
 }
 
 /** Adopt a share token: return the existing entry for it, or create one. Used
