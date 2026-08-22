@@ -1,7 +1,14 @@
 import { useMemo } from "react";
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
-import { DEFAULT_PREFS, buildPlanView, type PlanRow, type PlanSection } from "../engine/view.ts";
+import {
+  PRESETS,
+  PRESET_LABELS,
+  buildPlanView,
+  type PlanRow,
+  type PlanSection,
+  type ViewPrefs,
+} from "../engine/view.ts";
 import type { ProgressMap } from "../lib/useList.ts";
 import { Row } from "./Row.tsx";
 
@@ -12,6 +19,8 @@ interface Props {
   /** Collaborative "have" entries keyed by item id (shared lists only); empty in
    * local mode. Used purely to attribute who last touched a row. */
   progress: ProgressMap;
+  prefs: ViewPrefs;
+  onPrefsChange: (patch: Partial<ViewPrefs>) => void;
   setOwned: (itemId: string, qty: number) => void;
   setPathChoice: (itemId: string, recipeId: string) => void;
 }
@@ -63,12 +72,28 @@ function CraftMeta({ row }: { row: PlanRow }) {
   );
 }
 
-export function PlanView({ result, owned, pathChoices, progress, setOwned, setPathChoice }: Props) {
+const CRAFT_HINTS: Record<ViewPrefs["preset"], string> = {
+  tiered: "By tier — craft top to bottom; final products are last.",
+  flat: "In dependency order — craft top to bottom.",
+  profession: "Grouped by profession, so work can be split by station.",
+};
+
+export function PlanView({
+  result,
+  owned,
+  pathChoices,
+  progress,
+  prefs,
+  onPrefsChange,
+  setOwned,
+  setPathChoice,
+}: Props) {
   // The 3s poll re-renders this component with a stable `result`, so memoizing
   // keeps the whole section/row tree from being rebuilt on every tick.
-  const vm = useMemo(() => buildPlanView(result, dataset.items, DEFAULT_PREFS), [result]);
+  const vm = useMemo(() => buildPlanView(result, dataset.items, prefs), [result, prefs]);
 
-  if (vm.sections.length === 0) {
+  const empty = result.crafts.length === 0 && result.gather.length === 0;
+  if (empty) {
     return <p className="hint">Add items above to see what to gather and craft.</p>;
   }
 
@@ -139,6 +164,32 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
         <span className="summary-hint">amounts already exclude what you have</span>
       </div>
 
+      <div className="view-toolbar">
+        <div className="seg" role="group" aria-label="Plan layout">
+          {PRESETS.map((id) => (
+            <button
+              key={id}
+              className="seg-btn"
+              aria-pressed={prefs.preset === id}
+              onClick={() => onPrefsChange({ preset: id })}
+            >
+              {PRESET_LABELS[id]}
+            </button>
+          ))}
+        </div>
+        <label className="toolbar-check">
+          <input
+            type="checkbox"
+            checked={prefs.hideCompleted}
+            onChange={(e) => onPrefsChange({ hideCompleted: e.target.checked })}
+          />
+          Hide completed
+        </label>
+        {vm.totals.hiddenCount > 0 && (
+          <span className="summary-hint">{vm.totals.hiddenCount} hidden</span>
+        )}
+      </div>
+
       <section className="panel">
         <h2>Gather ({vm.totals.gatherLeft})</h2>
         {gatherSections.length === 0 && <p className="hint">Nothing to gather.</p>}
@@ -147,13 +198,20 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
 
       <section className="panel">
         <h2>Craft ({vm.totals.craftsLeft})</h2>
-        <p className="hint">By tier — craft top to bottom; final products are last.</p>
-        {craftSections.map((s) => (
-          <div key={s.key} className="prof-group">
-            <h3 className="prof-head">{s.heading}</h3>
-            {rowsOf(s, craftRow)}
-          </div>
-        ))}
+        <p className="hint">{CRAFT_HINTS[vm.preset]}</p>
+        {craftSections.length === 0 && <p className="hint">Nothing left to craft.</p>}
+        {craftSections.map((s) =>
+          // A single unnamed "Craft" section under the flat preset would just
+          // repeat the panel heading, so it renders bare.
+          s.key === "craft:all" ? (
+            rowsOf(s, craftRow)
+          ) : (
+            <div key={s.key} className="prof-group">
+              <h3 className="prof-head">{s.heading}</h3>
+              {rowsOf(s, craftRow)}
+            </div>
+          ),
+        )}
       </section>
     </div>
   );
