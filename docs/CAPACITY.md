@@ -71,21 +71,56 @@ Not the runtime constraint. Node + Hono + better-sqlite3 is ~100–150 MB RSS, C
 30–50 MB, Ubuntu 150–250 MB — comfortable inside 1 GB. The dataset is bundled into
 the *client* JS, so the server never loads it.
 
-Memory is a **deploy-time** constraint. `npm ci` removes `node_modules` before
-reinstalling, and `npm start` runs `tsx server/index.ts` — so `tsx`, a
-devDependency, is on the production start path. An OOM partway through an on-host
-build leaves no `node_modules`, no `tsx`, and a service that will not start, with
-no rollback. Build off-host, or at minimum ensure the instance has swap.
+Memory is a **deploy-time** constraint, and used to be a dangerous one. The old
+flow built in the live directory, `npm ci` removes `node_modules` before
+reinstalling, and `npm start` was `tsx server/index.ts` — putting a devDependency
+on the production start path. An OOM partway through left no `node_modules`, no
+`tsx`, and a service that could not start, with no rollback.
 
-Note that `deploy/DEPLOY.md` was written against a much larger A1 shape
-(1–2 OCPU / 6–12 GB); its on-host build steps are not safe at 1 GB.
+Both halves are fixed:
+
+- **The server is compiled ahead of time.** `npm run build:server` bundles it to
+  `dist-server/index.js` with esbuild (native and runtime packages stay
+  external), and `npm start` is plain `node dist-server/index.js`. Production
+  needs only `dependencies`; `deploy.sh` runs `npm prune --omit=dev` after
+  building.
+- **Deploys are atomic.** `deploy/deploy.sh` builds a new release directory as a
+  git worktree and only swaps the `current` symlink once the build *and* a
+  `/healthz` check have passed, rolling back automatically if the new release
+  does not come up. A failed build cannot touch the running service.
+
+Give the instance swap anyway — a 1 GB box running `npm ci` and Vite has very
+little margin.
+
+## Retention
+
+Lists used to accumulate forever, which made `POST /api/lists` — unauthenticated
+— a disk-exhaustion path. Because the database shares the boot volume with the
+OS, filling it takes down sshd and journald too, not just the app.
+
+`server/retention.ts` now sweeps lists with no **write** activity for
+`LIST_TTL_DAYS` (default 90, `0` disables). Progress rows cascade away with the
+list. The sweep runs at boot and then daily.
+
+Two details that matter:
+
+- **Reads do not count as activity.** Keeping a list alive on `GET` would mean a
+  database write on every poll — precisely the load this host cannot afford, and
+  a forgotten open tab would keep a dead list alive indefinitely.
+- **`updated_at` was the wrong clock**, so there is a separate
+  `last_activity_at`. `updated_at` moves with `version`, i.e. only on definition
+  edits — a group that has settled its targets and is only ticking items off
+  would look untouched and get swept while actively in use. Progress writes bump
+  `last_activity_at` and deliberately leave `updated_at` alone.
+
+The window is stated in the UI (`LIST_TTL_DAYS` in `shared/listTypes.ts`, shown
+in the planner footer). If an operator overrides the env var, that constant needs
+changing too or the app misstates its own policy.
 
 ## What is still unbounded
 
-- **Lists and progress are never deleted.** No TTL, no GC. `POST /api/lists` is
-  unauthenticated, so this is a disk-exhaustion path — and the database shares the
-  boot volume with the OS.
-- **`visitors` grows one row per unique IP forever**, and `/api/stats` runs full
-  scans plus a `GROUP BY first_seen` with no index on that column.
+- **`visitors` grows one row per unique IP forever.** Indexed now
+  (`first_seen`, `last_seen`), so `/api/stats` no longer full-scans, but nothing
+  prunes it.
 - **Rate-limit buckets live in process memory**, so every restart resets every
-  counter.
+  counter. A crash loop therefore bypasses rate limiting.

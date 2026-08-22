@@ -12,6 +12,7 @@ import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
 import { isRead, rateLimit } from "./rateLimit.ts";
+import { startRetention, ttlDaysFromEnv } from "./retention.ts";
 
 const db = openDb();
 const app = new Hono();
@@ -77,6 +78,18 @@ app.route("/api", createListsRouter(db));
 //   curl -H "Authorization: Bearer $STATS_TOKEN" https://<host>/api/stats
 app.route("/api", createStatsRouter(db, { token: process.env.STATS_TOKEN }));
 
+// Liveness probe for an external uptime checker. Deliberately unauthenticated
+// and free of detail — it touches the database (so a wedged SQLite file shows up
+// as a failure rather than a cheerful 200) but leaks no counts or versions.
+app.get("/healthz", (c) => {
+  try {
+    db.prepare("SELECT 1").get();
+    return c.text("ok");
+  } catch {
+    return c.text("db unavailable", 503);
+  }
+});
+
 // Serve the production build when present (no-op in dev, where Vite serves it).
 // Paths are cwd-relative to match serveStatic; npm scripts and the systemd unit
 // (WorkingDirectory=) both run from the repo root.
@@ -85,6 +98,10 @@ if (existsSync("./dist")) {
   // SPA fallback so deep links (e.g. /planner/<token>) resolve to index.html.
   app.get("*", serveStatic({ path: "./dist/index.html", onFound: cacheHeaders }));
 }
+
+// Retention sweep. Runs once at boot and then daily; see server/retention.ts for
+// why reads don't count as activity. LIST_TTL_DAYS=0 disables it.
+startRetention(db, { ttlDays: ttlDaysFromEnv() });
 
 const port = Number(process.env.PORT ?? 8787);
 // Bind to loopback by default so only the local tunnel agent reaches the API,
