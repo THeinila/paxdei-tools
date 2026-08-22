@@ -704,6 +704,40 @@ input[type="number"] {
   font-size: 12px;
 }
 
+/* Collapsible section headings. The button sits inside the existing h2/.prof-head
+   so their typography is untouched; aria-expanded carries the state. */
+.head-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.head-caret {
+  width: 10px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* "nothing in the plan blocks this" — same pill vocabulary as .rarity-tag, in
+   the green already used for actionable links. */
+.badge-ready {
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .prof-group {
   margin-top: 6px;
 }

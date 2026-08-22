@@ -5,6 +5,7 @@ import {
   PRESETS,
   PRESET_LABELS,
   buildPlanView,
+  formatStacks,
   type PlanRow,
   type PlanSection,
   type ViewPrefs,
@@ -60,7 +61,7 @@ function OwnedInput({
 }
 
 /** The craft-row summary: how many bench runs, the surplus a yield>1 recipe
- * leaves, and which profession does it. */
+ * leaves, which profession does it, and how many inventory stacks it comes to. */
 function CraftMeta({ row }: { row: PlanRow }) {
   if (row.satisfied) return <span className="meta">have enough</span>;
   return (
@@ -68,7 +69,50 @@ function CraftMeta({ row }: { row: PlanRow }) {
       {row.crafts} craft{row.crafts !== 1 ? "s" : ""}
       {row.produced !== row.qty ? ` → makes ${row.produced}` : ""}
       {row.profession ? ` · ${row.profession}` : ""}
+      {row.stacks ? ` · ${formatStacks(row.stacks)}` : ""}
     </span>
+  );
+}
+
+/** How many inventory stacks an amount comes to — only shown when it's more
+ * than one, so short rows stay uncluttered. */
+function Stacks({ row }: { row: PlanRow }) {
+  if (!row.stacks) return null;
+  return <span className="meta">{formatStacks(row.stacks)}</span>;
+}
+
+/** Nothing unfinished in the plan blocks this craft — do it now. */
+function ReadyBadge({ row }: { row: PlanRow }) {
+  if (!row.ready) return null;
+  return (
+    <span className="badge-ready" title="No unfinished sub-crafts — nothing in the plan blocks this">
+      ready
+    </span>
+  );
+}
+
+/** A collapsible section heading. The caret and aria-expanded both reflect the
+ * stored collapse state; clicking anywhere on the heading toggles it. */
+function SectionHead({
+  section,
+  label,
+  onToggle,
+  as: Tag,
+  className,
+}: {
+  section: PlanSection;
+  label: string;
+  onToggle: () => void;
+  as: "h2" | "h3";
+  className?: string;
+}) {
+  return (
+    <Tag className={className}>
+      <button className="head-toggle" aria-expanded={!section.collapsed} onClick={onToggle}>
+        <span className="head-caret">{section.collapsed ? "▸" : "▾"}</span>
+        {label}
+      </button>
+    </Tag>
   );
 }
 
@@ -99,11 +143,13 @@ export function PlanView({
 
   const gatherSections = vm.sections.filter((s) => s.kind === "gather");
   const craftSections = vm.sections.filter((s) => s.kind === "craft");
+  const flatSection = craftSections.find((s) => s.key === "craft:all");
 
   const gatherRow = (row: PlanRow) => {
     const item = getItem(row.itemId);
     return (
       <Row key={row.itemId} itemId={row.itemId} qty={row.qty} satisfied={row.satisfied}>
+        <Stacks row={row} />
         <OwnedInput itemId={row.itemId} owned={owned} setOwned={setOwned} />
         <By progress={progress} itemId={row.itemId} />
         {sourceUrl(item) && (
@@ -120,6 +166,7 @@ export function PlanView({
     return (
       <Row key={row.itemId} itemId={row.itemId} qty={row.qty} satisfied={row.satisfied}>
         <CraftMeta row={row} />
+        <ReadyBadge row={row} />
         {variants.length > 1 && (
           <select
             className="path-select"
@@ -139,11 +186,19 @@ export function PlanView({
     );
   };
 
-  const rowsOf = (section: PlanSection, render: (row: PlanRow) => JSX.Element) => (
-    <ul key={section.key} className="rows">
-      {section.rows.map(render)}
-    </ul>
-  );
+  const toggle = (section: PlanSection) => () =>
+    onPrefsChange({
+      collapsed: section.collapsed
+        ? prefs.collapsed.filter((k) => k !== section.key)
+        : [...prefs.collapsed, section.key],
+    });
+
+  const rowsOf = (section: PlanSection, render: (row: PlanRow) => JSX.Element) =>
+    section.collapsed ? null : (
+      <ul key={section.key} className="rows">
+        {section.rows.map(render)}
+      </ul>
+    );
 
   return (
     <div className="plan">
@@ -191,23 +246,51 @@ export function PlanView({
       </div>
 
       <section className="panel">
-        <h2>Gather ({vm.totals.gatherLeft})</h2>
-        {gatherSections.length === 0 && <p className="hint">Nothing to gather.</p>}
+        {gatherSections.map((s) => (
+          <SectionHead
+            key={s.key}
+            as="h2"
+            section={s}
+            label={`Gather (${vm.totals.gatherLeft})`}
+            onToggle={toggle(s)}
+          />
+        ))}
+        {gatherSections.length === 0 && (
+          <>
+            <h2>Gather (0)</h2>
+            <p className="hint">Nothing to gather.</p>
+          </>
+        )}
         {gatherSections.map((s) => rowsOf(s, gatherRow))}
       </section>
 
       <section className="panel">
-        <h2>Craft ({vm.totals.craftsLeft})</h2>
+        {/* Under the flat preset the one section has no heading of its own — it
+            would only repeat the panel title — so the panel heading collapses it. */}
+        {flatSection ? (
+          <SectionHead
+            as="h2"
+            section={flatSection}
+            label={`Craft (${vm.totals.craftsLeft})`}
+            onToggle={toggle(flatSection)}
+          />
+        ) : (
+          <h2>Craft ({vm.totals.craftsLeft})</h2>
+        )}
         <p className="hint">{CRAFT_HINTS[vm.preset]}</p>
         {craftSections.length === 0 && <p className="hint">Nothing left to craft.</p>}
         {craftSections.map((s) =>
-          // A single unnamed "Craft" section under the flat preset would just
-          // repeat the panel heading, so it renders bare.
-          s.key === "craft:all" ? (
+          s === flatSection ? (
             rowsOf(s, craftRow)
           ) : (
             <div key={s.key} className="prof-group">
-              <h3 className="prof-head">{s.heading}</h3>
+              <SectionHead
+                as="h3"
+                className="prof-head"
+                section={s}
+                label={s.heading}
+                onToggle={toggle(s)}
+              />
               {rowsOf(s, craftRow)}
             </div>
           ),
