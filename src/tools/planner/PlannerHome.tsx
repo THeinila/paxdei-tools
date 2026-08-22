@@ -14,6 +14,7 @@ import {
   listKey,
   loadContent,
   renameEntry,
+  setArchived,
   type ListEntry,
 } from "./lib/directory.ts";
 import { getList } from "./lib/api.ts";
@@ -43,6 +44,7 @@ export default function PlannerHome() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const refresh = () => setEntries(listEntries());
 
@@ -54,10 +56,13 @@ export default function PlannerHome() {
     navigate(`/planner/${token}`, { replace: true });
   }, [token, navigate]);
 
-  const sorted = useMemo(
-    () => [...entries].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [entries],
-  );
+  const { active, archived } = useMemo(() => {
+    const sorted = [...entries].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    return {
+      active: sorted.filter((e) => !e.archivedAt),
+      archived: sorted.filter((e) => e.archivedAt),
+    };
+  }, [entries]);
 
   async function onCreate() {
     if (busy) return;
@@ -118,6 +123,11 @@ export default function PlannerHome() {
     }
   }
 
+  function onArchive(entry: ListEntry, archived: boolean) {
+    setArchived(entry.id, archived);
+    refresh();
+  }
+
   function onDelete(entry: ListEntry) {
     // Removing only drops the list from this browser's directory; the shared list
     // itself lives on until everyone forgets its link.
@@ -142,11 +152,11 @@ export default function PlannerHome() {
         </div>
       </div>
 
-      {sorted.length === 0 ? (
+      {active.length === 0 && archived.length === 0 ? (
         <p className="hint">No lists yet. Create one to start planning your crafts.</p>
       ) : (
         <div className="tool-grid">
-          {sorted.map((entry) => (
+          {active.map((entry) => (
             <div key={entry.id} className="list-card">
               {editingId === entry.id ? (
                 <input
@@ -175,12 +185,49 @@ export default function PlannerHome() {
                 <button className="link-btn" onClick={() => onDuplicate(entry)}>
                   duplicate
                 </button>
+                <button className="link-btn" onClick={() => onArchive(entry, true)}>
+                  archive
+                </button>
                 <button className="link-btn" onClick={() => onDelete(entry)}>
                   delete
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {archived.length > 0 && (
+        <div className="archived-section">
+          <button className="link-btn" onClick={() => setShowArchived((v) => !v)}>
+            {showArchived ? "Hide" : "Show"} archived ({archived.length})
+          </button>
+          {showArchived && (
+            <div className="tool-grid">
+              {archived.map((entry) => (
+                <div key={entry.id} className="list-card archived">
+                  <button
+                    className="list-card-open"
+                    onClick={() => navigate(`/planner/${listKey(entry)}`)}
+                  >
+                    <span className="list-card-name">{entry.name || DEFAULT_NAME}</span>
+                    <span className="list-card-meta">
+                      {entry.targetCount} item{entry.targetCount === 1 ? "" : "s"} ·{" "}
+                      {relativeTime(entry.updatedAt)}
+                    </span>
+                  </button>
+                  <div className="list-card-actions">
+                    <button className="link-btn" onClick={() => onArchive(entry, false)}>
+                      unarchive
+                    </button>
+                    <button className="link-btn" onClick={() => onDelete(entry)}>
+                      delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

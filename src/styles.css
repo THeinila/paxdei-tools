@@ -655,6 +655,14 @@ input[type="number"] {
   margin-left: auto;
 }
 
+/* Archived lists: dimmed, behind a toggle, same idiom as .row.satisfied. */
+.archived-section {
+  margin-top: 20px;
+}
+.list-card.archived {
+  opacity: 0.55;
+}
+
 /* ── Plan view toolbar ───────────────────────────────────────────────────────
    Layout controls above the plan: which grouping to use, and whether to hide
    rows the owned stock already covers. */
