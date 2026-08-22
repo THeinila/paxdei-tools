@@ -1,6 +1,7 @@
 /** Site-level chrome shared by every tool: the header (brand + tool nav) and the
  * footer (site-wide disclaimer). The routed tool renders into <Outlet/>. Tool-
  * specific actions (e.g. the planner's Share button) live inside the tool, not here. */
+import { Suspense } from "react";
 import { NavLink, Link, Outlet } from "react-router-dom";
 import { tools } from "../tools/registry.tsx";
 
@@ -31,7 +32,11 @@ export default function AppShell() {
       </header>
 
       <main>
-        <Outlet />
+        {/* Tools are lazy (see tools/registry.tsx), so the outlet needs a
+            boundary while a tool's code and data chunks arrive. */}
+        <Suspense fallback={<p className="hint">Loading…</p>}>
+          <Outlet />
+        </Suspense>
       </main>
 
       <footer className="footer">

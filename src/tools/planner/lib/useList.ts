@@ -6,7 +6,7 @@
  * deltas. `owned` is DERIVED from the progress map (never stored separately), so
  * the two can't drift. Clients poll every few seconds. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { dataset } from "./data.ts";
+import { getDataset } from "./data.ts";
 import { plan, type Target } from "../engine/planner.ts";
 import {
   VersionConflict,
@@ -372,7 +372,7 @@ export function useList(token: string): UseList {
   const owned = useMemo(() => progressToOwned(progress), [progress]);
 
   const result = useMemo(
-    () => plan(dataset, state.targets, { owned, pathChoices: state.pathChoices }),
+    () => plan(getDataset(), state.targets, { owned, pathChoices: state.pathChoices }),
     [state.targets, state.pathChoices, owned],
   );
 

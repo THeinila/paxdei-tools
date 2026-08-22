@@ -1,10 +1,24 @@
 /** The catalog of tools in the suite — the single source of truth used by both
  * the routing table (src/routes.tsx) and the landing page (src/shell/Home.tsx).
  * Adding a tool is one entry here plus its component. */
-import type { ReactElement } from "react";
+import { lazy, type ReactElement } from "react";
 import { useParams } from "react-router-dom";
-import Planner from "./planner/Planner.tsx";
-import PlannerHome from "./planner/PlannerHome.tsx";
+import { loadDataset } from "./planner/lib/data.ts";
+
+// The planner is loaded on demand, together with its ~1.5 MB item dataset.
+// Neither is needed by the shell or the landing page, and keeping them out of
+// the main bundle is what lets a first visit render before the whole item
+// catalogue has arrived. Promise.all so the code chunk and the data chunk
+// download in parallel rather than one after the other; the component is only
+// handed back once the dataset is in place, so everything inside it can keep
+// reading the dataset synchronously.
+const withDataset = <T,>(load: () => Promise<{ default: T }>) => async () => {
+  const [mod] = await Promise.all([load(), loadDataset()]);
+  return mod;
+};
+
+const Planner = lazy(withDataset(() => import("./planner/Planner.tsx")));
+const PlannerHome = lazy(withDataset(() => import("./planner/PlannerHome.tsx")));
 
 export interface Tool {
   id: string;

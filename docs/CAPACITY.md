@@ -14,13 +14,31 @@ trading away.
 
 ## Cost per request
 
-| Request | Bytes out | CPU | % of budget |
+| Request | Bytes out (gzipped) | CPU | % of budget |
 |---|---:|---:|---:|
 | Poll (`GET /api/lists/:token`) | ~1 KB | ~2.5 ms | 2% |
 | One icon | 10 KB | ~1.5 ms | 1.2% |
-| JS bundle (compressed) | ~182 KB | ~4 ms | 3% |
-| JS bundle (uncompressed) | 1.82 MB | ~40 ms | 32% |
-| Cold page load | ~250 KB | ~25 ms | 20% |
+| App shell (`index` chunk + CSS) | ~85 KB | ~3 ms | 2.4% |
+| Planner code chunks | ~12 KB | ~1 ms | 0.8% |
+| Dataset chunk | ~89 KB | ~3 ms | 2.4% |
+
+Three loads matter, and they are very different:
+
+| Visit | Transferred | Notes |
+|---|---:|---|
+| Landing page | ~85 KB | Never touches the dataset |
+| Planner, cold | ~185 KB | Shell + planner + dataset + icons |
+| Planner, after a **code-only** deploy | ~95 KB | Dataset chunk still cached |
+
+That last row is the point of splitting the dataset out. It is ~1.5 MB raw and
+used to be inlined in the main bundle, sharing its content hash — so every code
+deploy invalidated it and re-sent the entire item catalogue to every returning
+user. Now it is its own immutable, separately-hashed chunk, loaded only when a
+planner route mounts (`loadDataset()` in `src/tools/planner/lib/data.ts`, gated
+by the lazy routes in `src/tools/registry.tsx`).
+
+It also means the game growing costs less: Pax Dei adding items inflates one
+cacheable chunk instead of the bundle everyone downloads on arrival.
 
 ## The three ceilings
 
@@ -31,12 +49,14 @@ target (50 ms/s) that is ~200 tabs; derate hard for bursts and call it **60
 comfortable**. At the old 3-second interval the same target gave ~60 absolute, so
 widening the poll was worth roughly 3× capacity on its own.
 
-**2. Page loads — about 25/min.**
-Dominated by first-load asset cost. Two fixes matter here and both are config:
+**2. Page loads.**
+Dominated by first-load asset cost, and much cheaper than it was. Three fixes,
+all of them structural rather than clever:
 
-- `encode zstd gzip` in the Caddyfile. The bundle inlines the whole item dataset,
-  so it is 1.82 MB raw and ~182 KB gzipped — a 10× saving on the largest thing
-  the host serves.
+- `encode zstd gzip` in the Caddyfile. Nothing was compressed at all; the main
+  bundle alone went from 1.82 MB to ~182 KB.
+- The dataset is a separate lazy chunk (see above), so the shell is ~85 KB and
+  the landing page never loads the catalogue.
 - Icons cached for 30 days (`server/index.ts`). They used to fall into the
   `no-cache` bucket, and `@hono/node-server`'s `serveStatic` sends `Last-Modified`
   but **never answers a conditional request with a 304** — it always streams the

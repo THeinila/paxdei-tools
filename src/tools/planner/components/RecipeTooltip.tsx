@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
+import { getDataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import { Icon } from "./Search.tsx";
 
 /**
@@ -72,7 +72,7 @@ export function RarityTag({ itemId }: { itemId: string }) {
 /** Floating recipe card positioned relative to the hovered row's anchor rect. */
 function RecipeTooltip({ itemId, anchor }: { itemId: string; anchor: DOMRect }) {
   const item = getItem(itemId);
-  const variants = dataset.recipes[itemId]?.variants ?? [];
+  const variants = getDataset().recipes[itemId]?.variants ?? [];
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 

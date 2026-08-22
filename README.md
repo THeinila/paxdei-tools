@@ -87,7 +87,10 @@ landing page; each tool is a self-contained module under `src/tools/<tool>/`.
   - **`engine/`** — pure-TS recipe engine (`planner.ts`): tree flattening,
     owned-stock subtraction, dependency-tier assignment, alternative-path
     selection, cycle guard. Unit-tested.
-  - **`components/`, `lib/`** — React UI (search, crafting list, plan view).
+  - **`components/`, `lib/`** — React UI (search, crafting list, plan view). The
+    ~1.5 MB item dataset is a lazily loaded, separately-hashed chunk
+    (`loadDataset()` in `lib/data.ts`), so the shell and landing page never pay
+    for it and a code-only deploy leaves the cached copy valid.
     `useList` runs in two modes: local (localStorage) or shared (server-backed,
     polled). The shared "have" map is fed into the engine exactly as owned stock.
 - **`server/`** — share backend (Hono + better-sqlite3). Two concurrency strategies:
