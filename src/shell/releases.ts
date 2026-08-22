@@ -32,14 +32,6 @@ export const releases: Release[] = [
     title: "Caught up with the game update",
     sections: [
       {
-        changes: [
-          {
-            kind: "fixed",
-            text: "The site now reliably picks up updates — previously your browser could keep showing an older version of the app until you did a hard refresh.",
-          },
-        ],
-      },
-      {
         tool: "Crafting Planner",
         changes: [
           {
