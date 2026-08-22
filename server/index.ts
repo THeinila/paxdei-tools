@@ -11,7 +11,7 @@ import { sep } from "node:path";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
-import { rateLimit } from "./rateLimit.ts";
+import { isRead, rateLimit } from "./rateLimit.ts";
 
 const db = openDb();
 const app = new Hono();
@@ -21,13 +21,26 @@ const app = new Hono();
 // (and any other unhashed file) must be revalidated so a redeploy is picked up
 // without a hard refresh — otherwise a stale cached index.html keeps loading an
 // old, deleted bundle and deep links mis-route to the landing page.
+//
+// Icons need their own rule. Their filenames are derived from the game's icon
+// path (scripts/fetch-icons.ts and the app both go through localIconName), so a
+// given URL keeps serving the same picture and is safe to cache hard. Without
+// this they fall into the "no-cache" bucket, and because @hono/node-server's
+// serveStatic sends Last-Modified but never answers a conditional request with
+// a 304, every reload re-downloads every icon on screen in full. A plan with 50
+// icons is ~500 KB and ~75 ms of CPU per page view — on 1/8 of an OCPU that is
+// the single largest avoidable cost the host carries. Long max-age rather than
+// `immutable` so that if an icon's artwork is ever replaced under the same path,
+// the fleet self-heals within a month instead of never.
+const ICON_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 const cacheHeaders = (path: string, c: Context) => {
-  c.header(
-    "Cache-Control",
-    path.includes(`${sep}assets${sep}`)
-      ? "public, max-age=31536000, immutable"
-      : "no-cache",
-  );
+  let policy = "no-cache";
+  if (path.includes(`${sep}assets${sep}`)) {
+    policy = "public, max-age=31536000, immutable";
+  } else if (path.includes(`${sep}icons${sep}`)) {
+    policy = `public, max-age=${ICON_MAX_AGE}`;
+  }
+  c.header("Cache-Control", policy);
 };
 
 // Anonymous usage metrics (unique visitors + event counters, server-side only;
@@ -40,7 +53,19 @@ app.use("*", visitorTracking(db));
 // the create cap is generous — abuse is still bounded by the per-minute cap and
 // the tiny per-list payload.
 app.use("/api/*", bodyLimit({ maxSize: 64 * 1024 }));
-app.use("/api/*", rateLimit({ name: "api", limit: 60, windowMs: 60_000 }));
+// Reads and writes get separate budgets. A single flat 60/min cap used to sit
+// BELOW what the app itself generates once a couple of tabs shared an address:
+// the poll is one request per client per interval, so a handful of tabs behind
+// one NAT exhausted the whole allowance and the app started 429ing people for
+// using it normally. Reads are cheap and non-mutating, so they get room for
+// dozens of concurrent tabs per address; writes stay tight.
+app.use("/api/*", rateLimit({ name: "read", limit: 240, windowMs: 60_000, when: isRead }));
+app.use(
+  "/api/*",
+  rateLimit({ name: "write", limit: 120, windowMs: 60_000, when: (c) => !isRead(c) }),
+);
+// List creation is the one unauthenticated endpoint that grows the database, so
+// it keeps its own, much slower budget on top of the write cap above.
 app.post("/api/lists", rateLimit({ name: "create", limit: 600, windowMs: 60 * 60_000 }));
 
 // The crafting planner's API. As the suite grows, each tool mounts its own

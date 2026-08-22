@@ -5,5 +5,21 @@
 # DEPLOY.md). For a quick test before you have a domain, a sslip.io/nip.io name
 # embedding the IP also works (e.g. 129-151-221-127.sslip.io).
 paxdei.erech.fi {
+	# Compress responses. The app bundle inlines the whole item dataset, so it is
+	# ~1.8 MB raw and ~180 KB gzipped — a 10x saving on the single largest thing
+	# this host serves, which matters a lot on 1/8 of an OCPU. Caddy skips
+	# already-compressed types (webp icons, images) automatically.
+	encode zstd gzip
+
+	header {
+		# HSTS. Caddy redirects http->https but does not send this by default.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Never let a browser second-guess a declared Content-Type.
+		X-Content-Type-Options "nosniff"
+		# Share tokens travel in the URL path, so keep them out of Referer on any
+		# cross-origin navigation (the in-app outbound links also set rel=noreferrer).
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
 	reverse_proxy 127.0.0.1:8787
 }

@@ -17,6 +17,7 @@ import {
   type ProgressEntry,
 } from "./api.ts";
 import { ensureHandle } from "./handle.ts";
+import { FENCE_IN_FLIGHT, mergeProgress, type ProgressMap } from "./progressMerge.ts";
 
 export interface ListState {
   name: string;
@@ -25,9 +26,28 @@ export interface ListState {
   pathChoices: Record<string, string>;
 }
 
-export type ProgressMap = Record<string, ProgressEntry>;
+// Single definition, shared with the merge rules that operate on it.
+export type { ProgressMap };
 
-const POLL_MS = 3000;
+/** Base poll interval. Deliberately slow: the host is a 1/8-OCPU box and every
+ * open tab costs it a request per interval forever, so this is the single
+ * biggest lever on how many people the deployment supports. Collaboration still
+ * feels live because local edits apply optimistically — the poll is how you see
+ * OTHER people's work, and ~10s is well inside "someone else is gathering too".
+ *
+ * Widening it also widens every race window by the same factor, which is why the
+ * write-fencing below exists rather than relying on a fast poll to paper over a
+ * clobbered value. */
+const POLL_MS = 10_000;
+/** Random extra delay per tick. Without it, every client that loaded during the
+ * same outage resumes in lockstep and re-synchronises into a thundering herd on
+ * a host that has ~125ms of CPU per second to spend. */
+const POLL_JITTER_MS = 2000;
+/** Attempts to rebase a definition edit onto a concurrent one before giving up.
+ * A slower poll means clients hold a stale version for longer, so genuine 409s
+ * get more common; one retry is no longer enough for a list two people are
+ * actively editing. */
+const MAX_REBASE_ATTEMPTS = 3;
 const EMPTY: ListState = { name: "", targets: [], owned: {}, pathChoices: {} };
 
 // --- Pure definition updaters (shared by both modes) -------------------------
@@ -102,11 +122,53 @@ export function useList(token: string): UseList {
     defRef.current = { name: state.name, targets: state.targets, pathChoices: state.pathChoices };
   }, [state.name, state.targets, state.pathChoices]);
 
+  // Synchronous mirror of the progress map, for the same reason defRef exists:
+  // setOwned takes an ABSOLUTE quantity but has to send a DELTA, and computing
+  // that delta against React state means reading a value that may be one or more
+  // updates behind. Two quick edits ("5", then "8") would each subtract from 0
+  // and post +5 then +8, landing on 13.
+  const progressRef = useRef<ProgressMap>({});
+  const writeProgress = useCallback((next: ProgressMap) => {
+    progressRef.current = next;
+    setProgress(next);
+  }, []);
+
+  // --- Write fencing ---------------------------------------------------------
+  // Poll responses carry a whole-map snapshot, so a poll that the server answered
+  // from state older than our own just-committed write will silently roll that
+  // write back on screen until the next tick. At a 10s interval that is 10s of
+  // showing the user a number they know is wrong.
+  //
+  // Each poll is tagged with a monotonic sequence number when it is ISSUED. When
+  // a progress write completes we record the latest issued seq as that item's
+  // fence: only a poll issued strictly after that point can have observed our
+  // write, so only such a poll is allowed to replace the item's value. Polls
+  // issued earlier keep our local value for that item and are applied normally
+  // for every other item. While a write is in flight the fence is Infinity, so
+  // nothing can overwrite the optimistic value.
+  // The merge rules themselves live in ./progressMerge.ts as a pure function so
+  // the ordering cases can be tested without going through React timing.
+  const pollSeq = useRef(0);
+  const appliedSeq = useRef(-1);
+  const fences = useRef<Map<string, number>>(new Map());
+
   // --- Hydrate + poll --------------------------------------------------------
   const applySnapshot = useCallback(
-    (snap: { version: number; state: ListStateDef; progress: ProgressEntry[] }, adoptDef: boolean) => {
+    (
+      snap: { version: number; state: ListStateDef; progress: ProgressEntry[] },
+      adoptDef: boolean,
+      seq: number,
+      initial: boolean,
+    ) => {
       versionRef.current = snap.version;
-      setProgress(indexProgress(snap.progress));
+      // On the first load there is nothing local worth protecting, so take the
+      // server's map wholesale and reset the fences to match.
+      if (initial) {
+        fences.current.clear();
+        writeProgress(indexProgress(snap.progress));
+      } else {
+        writeProgress(mergeProgress(snap.progress, progressRef.current, fences.current, seq));
+      }
       if (adoptDef) {
         defRef.current = {
           name: snap.state.name,
@@ -116,35 +178,70 @@ export function useList(token: string): UseList {
         setState((s) => ({ ...s, ...defRef.current }));
       }
     },
-    [],
+    [writeProgress],
   );
 
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let inFlight = false;
     setReady(false);
     setError(null);
 
     const poll = async (initial: boolean) => {
+      // Never let a second poll overlap the first. On a heavily loaded host a
+      // response can take longer than the interval, and two in flight can land
+      // out of order — an older snapshot overwriting a newer one.
+      if (inFlight) return;
+      inFlight = true;
+      const seq = ++pollSeq.current;
       try {
         const snap = await getList(token);
         if (cancelled) return;
-        // On a poll, only adopt the definition when no edit is in flight and the
-        // server actually moved ahead of what we've saved.
-        const adoptDef = initial || (pendingEdits.current === 0 && snap.version >= versionRef.current);
-        applySnapshot(snap, adoptDef);
+        // Drop a response that lost the race to a newer one.
+        if (!initial && seq <= appliedSeq.current) return;
+        appliedSeq.current = seq;
+        // Only adopt the definition when no edit is in flight and the server
+        // actually moved ahead of what we've saved.
+        const adoptDef =
+          initial || (pendingEdits.current === 0 && snap.version >= versionRef.current);
+        applySnapshot(snap, adoptDef, seq, initial);
+        setError(null);
         if (initial) setReady(true);
       } catch (e) {
         if (cancelled) return;
         setError(e instanceof Error ? e.message : "failed to load list");
         if (initial) setReady(true);
+      } finally {
+        inFlight = false;
       }
     };
 
+    // Recursive timeout rather than setInterval, so the delay can carry jitter
+    // and so a slow response pushes the next tick out instead of stacking.
+    const schedule = () => {
+      if (cancelled) return;
+      timer = setTimeout(async () => {
+        // A hidden tab has nobody watching it; polling it is pure cost to the
+        // host. Skip the tick and let the visibility handler catch up on focus.
+        if (document.visibilityState === "visible") await poll(false);
+        schedule();
+      }, POLL_MS + Math.random() * POLL_JITTER_MS);
+    };
+
+    const onVisible = () => {
+      // Refresh immediately on focus — after a spell hidden, whatever is on
+      // screen is arbitrarily stale and the user is looking straight at it.
+      if (document.visibilityState === "visible") void poll(false);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     void poll(true);
-    const id = setInterval(() => void poll(false), POLL_MS);
+    schedule();
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [token, applySnapshot]);
 
@@ -160,29 +257,41 @@ export function useList(token: string): UseList {
       pendingEdits.current += 1;
       void (async () => {
         try {
-          const saved = await patchList(token, next, versionRef.current);
-          versionRef.current = saved.version;
-        } catch (e) {
-          if (e instanceof VersionConflict) {
-            // Rebase our edit on the server's current definition and retry once.
+          // Rebase-and-retry loop. On a 409 we replay `fn` against the server's
+          // current definition rather than re-sending ours, so concurrent edits
+          // compose instead of overwriting: two people each adding a target both
+          // end up in the list. Bounded, because a list being edited hard by
+          // several people could otherwise spin here.
+          let base = versionRef.current;
+          let candidate = next;
+          for (let attempt = 0; ; attempt++) {
             try {
-              versionRef.current = e.current.version;
-              const rebased = fn(e.current.state);
-              defRef.current = rebased;
+              const saved = await patchList(token, candidate, base);
+              versionRef.current = saved.version;
+              return;
+            } catch (e) {
+              if (!(e instanceof VersionConflict)) throw e;
+              if (attempt >= MAX_REBASE_ATTEMPTS - 1) throw e;
+              base = e.current.version;
+              versionRef.current = base;
+              candidate = fn(e.current.state);
+              defRef.current = candidate;
               setState((s) => ({
                 ...s,
-                name: rebased.name,
-                targets: rebased.targets,
-                pathChoices: rebased.pathChoices,
+                name: candidate.name,
+                targets: candidate.targets,
+                pathChoices: candidate.pathChoices,
               }));
-              const saved = await patchList(token, rebased, e.current.version);
-              versionRef.current = saved.version;
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "failed to save edit");
             }
-          } else {
-            setError(e instanceof Error ? e.message : "failed to save edit");
           }
+        } catch (e) {
+          setError(
+            e instanceof VersionConflict
+              ? "someone else is editing this list — your last change may not have saved"
+              : e instanceof Error
+                ? e.message
+                : "failed to save edit",
+          );
         } finally {
           pendingEdits.current -= 1;
         }
@@ -216,28 +325,47 @@ export function useList(token: string): UseList {
   const setOwned = useCallback(
     (itemId: string, qty: number) => {
       // Write the delta from what we currently show, attributed to the handle.
+      // Read through the synchronous mirror, not React state: back-to-back edits
+      // must each subtract from the previous one, not from a stale render.
       const handle = ensureHandle();
       if (!handle) return;
-      const current = progress[itemId]?.qty ?? 0;
-      const delta = qty - current;
+      const before = progressRef.current[itemId];
+      const current = before?.qty ?? 0;
+      const target = Math.max(0, qty);
+      const delta = target - current;
       if (delta === 0) return;
       const optimistic: ProgressEntry = {
         itemId,
-        qty: Math.max(0, qty),
+        qty: target,
         byHandle: handle,
         updatedAt: new Date().toISOString(),
       };
-      setProgress((p) => ({ ...p, [itemId]: optimistic }));
+      // Fence the item for the duration of the write so no poll — including one
+      // already in flight — can roll the optimistic value back.
+      fences.current.set(itemId, FENCE_IN_FLIGHT);
+      writeProgress({ ...progressRef.current, [itemId]: optimistic });
       void (async () => {
         try {
           const saved = await postProgress(token, itemId, delta, handle);
-          setProgress((p) => ({ ...p, [itemId]: saved }));
+          // The server has our write now. Release the fence to the latest issued
+          // poll seq: any poll issued from here on must have observed it, so it
+          // is free to bring us newer values (including other people's).
+          fences.current.set(itemId, pollSeq.current);
+          writeProgress({ ...progressRef.current, [itemId]: saved });
         } catch (e) {
+          // Roll back rather than leaving a value on screen that was never
+          // saved — otherwise the user believes their count is recorded and
+          // only finds out at some later poll.
+          fences.current.delete(itemId);
+          const reverted = { ...progressRef.current };
+          if (before) reverted[itemId] = before;
+          else delete reverted[itemId];
+          writeProgress(reverted);
           setError(e instanceof Error ? e.message : "failed to save progress");
         }
       })();
     },
-    [token, progress],
+    [token, writeProgress],
   );
 
   // `owned` is a pure projection of the collaborative progress map.

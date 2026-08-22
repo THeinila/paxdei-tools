@@ -1,14 +1,25 @@
 # Deploying pax-planner on Oracle Cloud "Always Free"
 
 > **Status:** live and verified at **https://paxdei.erech.fi** (Oracle Always-Free
-> ARM VM, `129.151.221.127`). End-to-end checks below — TLS, create/share,
+> `VM.Standard.E2.1.Micro`, x86, `129.151.221.127`). End-to-end checks below — TLS, create/share,
 > concurrent additive progress, reboot persistence, and systemd auto-restart — all
 > pass. This file is the runbook to reproduce or update that deployment.
 
-Host pax-planner for a small group (≤20 daily users) for **$0/month** on an
-Oracle Cloud Infrastructure (OCI) Always-Free VM. The app keeps shared lists in a
-SQLite file on local disk, so a plain VM with a persistent boot volume runs it
-unchanged — no managed database, no code rewrite.
+Host pax-planner for **$0/month** on an Oracle Cloud Infrastructure (OCI)
+Always-Free VM. The live deployment is a **VM.Standard.E2.1.Micro** — 1/8 OCPU
+and 1 GB RAM — which carries roughly **60 concurrent open tabs**, or a community
+of around 750 people at typical peak concurrency. See
+[../docs/CAPACITY.md](../docs/CAPACITY.md) for the arithmetic and for the tuning
+constants that depend on it.
+
+> **Shape matters below.** Steps 1 and 4 describe the larger A1 shape and build
+> on the host. On the 1 GB micro that is risky: `npm ci` deletes `node_modules`
+> before reinstalling and `npm start` needs `tsx` (a devDependency), so an
+> OOM-killed build leaves the service unable to start with no rollback. Ensure
+> the instance has swap, or build off-host and copy `dist/` across.
+
+The app keeps shared lists in a SQLite file on local disk, so a plain VM with a
+persistent boot volume runs it unchanged — no managed database, no code rewrite.
 
 ```
 Internet ──(443/80)──> Caddy (auto-TLS) ──(127.0.0.1:8787)──> npm start
@@ -19,7 +30,8 @@ Internet ──(443/80)──> Caddy (auto-TLS) ──(127.0.0.1:8787)──> np
 
 The only public listener is Caddy; the Node app stays on loopback. systemd keeps
 it always-on. Files referenced below live in this `deploy/` directory:
-[`pax-planner.service`](pax-planner.service) and [`Caddyfile`](Caddyfile).
+[`pax-planner.service`](pax-planner.service), [`Caddyfile`](Caddyfile) and
+[`backup.sh`](backup.sh).
 
 ---
 
@@ -128,12 +140,37 @@ without it `dist/icons/` is empty and all item images 404.
 
 - Only 22/80/443 are public; never expose the app port (8787) in the Security List.
 - The exposed-API hardening (body cap + rate limits, `server/index.ts`) still
-  applies. Every list is server-backed, so `POST /api/lists` (the one unauthenticated,
-  DB-growing endpoint) now runs on every new list, duplicate, and legacy-list
-  migration; its cap is a generous 600/hour/client, with the general 60/min/client cap
-  bounding bursts. Fine for a known ≤20-person group. If abuse appears, add a
-  shared-secret env gate.
+  applies. Rate limits are split by method: reads 240/min/client, writes
+  120/min/client, and `POST /api/lists` — the one unauthenticated, DB-growing
+  endpoint — 600/hour/client on top of that. The limiter keys on client IP, so
+  everyone behind one NAT counts as a single client; see [../docs/CAPACITY.md](../docs/CAPACITY.md)
+  before lowering these. If abuse appears, add a shared-secret env gate.
+- **Nothing ever deletes a list.** There is no TTL or GC, and the database shares
+  the boot volume with the OS, so sustained list creation is a disk-exhaustion
+  path that can take the whole VM down (not just the app). Watch free space.
 - Enable `unattended-upgrades` for OS patches.
+
+## Backups (do this — it is the biggest single risk)
+
+Every list and all progress live in one SQLite file on one boot volume. Nothing
+copies it anywhere by default, and Oracle reclaims Always Free instances that look
+idle — a low-traffic app on 1/8 of a core fits that profile. Losing the volume
+loses everything.
+
+[`backup.sh`](backup.sh) takes a consistent snapshot of the live database with
+`sqlite3 .backup` (never `cp` — the server holds it open in WAL mode), gzips it,
+and prunes old copies:
+
+```bash
+sudo apt-get install -y sqlite3
+sudo cp deploy/backup.sh /usr/local/bin/pax-planner-backup
+sudo chmod +x /usr/local/bin/pax-planner-backup
+crontab -e   # 17 4 * * * /usr/local/bin/pax-planner-backup >> /var/log/pax-planner-backup.log 2>&1
+```
+
+**A backup on the same volume is not a backup.** Uncomment one of the off-box
+copy lines at the bottom of the script (Oracle Object Storage, rsync, or rclone)
+once you have somewhere to put it.
 
 ## Usage metrics
 
