@@ -655,6 +655,10 @@ input[type="number"] {
   margin-left: auto;
 }
 
+.quick-list {
+  margin-bottom: 20px;
+}
+
 /* Archived lists: dimmed, behind a toggle, same idiom as .row.satisfied. */
 .archived-section {
   margin-top: 20px;

@@ -18,6 +18,8 @@ import {
   type ListEntry,
 } from "./lib/directory.ts";
 import { getList } from "./lib/api.ts";
+import { Search } from "./components/Search.tsx";
+import { itemName } from "./lib/data.ts";
 import { tools } from "../registry.tsx";
 
 function relativeTime(iso: string): string {
@@ -123,6 +125,21 @@ export default function PlannerHome() {
     }
   }
 
+  /** Start a list straight from a search result — on this page there is no list
+   * to add to, so "add" means "plan this". */
+  async function onQuickList(itemId: string, quantity: number) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const entry = await createShared({ name: itemName(itemId), targets: [{ itemId, quantity }] });
+      navigate(`/planner/${listKey(entry)}`);
+    } catch (e) {
+      alert(`Could not create a list: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function onArchive(entry: ListEntry, archived: boolean) {
     setArchived(entry.id, archived);
     refresh();
@@ -150,6 +167,11 @@ export default function PlannerHome() {
             {busy ? "Working…" : "+ Create a new list"}
           </button>
         </div>
+      </div>
+
+      <div className="quick-list">
+        <p className="hint">Or start a list from a single item:</p>
+        <Search onAdd={onQuickList} autoFocus={false} />
       </div>
 
       {active.length === 0 && archived.length === 0 ? (
