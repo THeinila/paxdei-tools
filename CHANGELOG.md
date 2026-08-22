@@ -5,6 +5,51 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.3.0] — 2026-08-23
+
+### Crafting Planner 1.3.0
+- **Layout presets.** The plan can now be grouped three ways, switched from a new
+  toolbar above it: **Tiered** (the previous fixed view, still the default), **Flat**
+  (the engine's dependency order in one list) and **By profession** (grouped by station,
+  deepest components first within each). Borrowed from FFXIV Teamcraft's layout system,
+  cut down to three presets — see [docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md).
+- **Hide completed** drops rows the owned stock already covers and reports how many it
+  hid; **every section heading collapses**, caret and `aria-expanded` included.
+- **Ready badges** on craft steps that nothing unfinished in the plan blocks. Raw
+  ingredients deliberately don't block — computing an honest "craftable now" count would
+  need a surplus/reservation pass, since owned stock is already subtracted at every node
+  and a naive `min(floor(owned/count))` double-counts material spent upstream.
+- **Stack counts** ("4 stacks", "1 stack + 10") on any row above one inventory stack,
+  from the existing `maxStackSize`.
+- **Copy as Markdown** puts the plan on the clipboard as a GitHub/Discord checklist.
+- **Archive** retires a finished list without deleting it, behind a "Show archived"
+  toggle; and a search box on the directory page starts a list from a single item.
+- View settings (preset, hide-completed, collapsed sections) are stored **per browser and
+  per list** in `lib/prefs.ts`, so collaborators on a shared list each keep their own view
+  and switching views never touches the version-guarded list definition.
+
+#### Internals
+- Grouping/filtering/row derivation moved out of `PlanView.tsx` into a pure
+  `engine/view.ts` (`buildPlanView`, `computeReady`, `stacksFor`). It's unit-testable
+  without a DOM library — there is none in this repo — and `engine/markdown.ts` renders
+  from the same view model, so the export can't drift from the screen.
+- Readiness is computed over the full step list *before* hide-completed filtering, or
+  hiding a row would silently unblock its consumers. It's two linear passes with no
+  recursion, so a recipe cycle degrades to no badge rather than hanging.
+- `totals.tierCount` derives from the step list, not the section count, so the summary
+  reads the same under every preset.
+- Gather is one section under every preset: `GatherStep` carries neither a tier nor a
+  profession. Its rows now sort by display name rather than raw item id.
+- `ListEntry.archivedAt` is optional, so stored entries need no migration. `setArchived`
+  passes `updatedAt` through explicitly — the directory sorts by it, so archiving would
+  otherwise reorder the list at the moment it's hidden.
+- Engine test fixtures extracted to `engine/testFixtures.ts`; new tests cover the view
+  model, readiness, stacks, the Markdown serializer (exact strings, not snapshots),
+  prefs sanitization and archiving. 72 tests total.
+- `Search` takes an `autoFocus` prop (default true) so the directory's search box doesn't
+  steal focus on load; the mobile full-width `.path-select` rule is now scoped to
+  `.row-controls` so it can't reach into the new toolbar.
+
 ## [1.2.1] — 2026-08-22
 
 ### Crafting Planner 1.2.1

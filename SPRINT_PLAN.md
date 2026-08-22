@@ -66,25 +66,30 @@ open one link and divide the gathering/crafting. Run with `npm run dev:all`.
 ## Medium — UX improvements
 
 - [ ] **Mobile layout pass** — rows wrap awkwardly on narrow screens.
-- [ ] **Collapsible tiers / sections** and a per-tier summary (e.g. counts).
-- [ ] **Copy / export** the plan (Markdown or plain text) to paste into Discord.
+- [x] **Collapsible tiers / sections** and a per-tier summary (e.g. counts). *(1.3.0)*
+- [x] **Copy / export** the plan (Markdown or plain text) to paste into Discord. *(1.3.0)*
 - [ ] **Search filters** — by profession/category, and a toggle to hide building
       pieces (they dominate the catalog).
 - [ ] **Item detail on hover/click** — recipe preview, tier, categories.
-- [ ] **Optional "by profession" view toggle** — the previous grouping was useful
-      for splitting work by station; offer it as an alternate to the tier view.
+- [x] **Optional "by profession" view toggle** — shipped as one of three layout
+      presets (tiered / flat / by profession). *(1.3.0)*
 - [ ] **Make the "where?" link optional / configurable** for users who want a
       strictly air-gapped app (it's the only outbound link, click-only today).
 
 ---
 
+See [docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md) for the ranked list of
+what else is worth borrowing from FFXIV Teamcraft — the next candidates are per-item
+comments, self-claiming rows, item tags, and an area breakdown (blocked on biome data).
+
 ## Backlog — Feature ideas
 
 - [ ] **"I'll buy/trade this" toggle** — treat a chosen intermediate as supplied,
       like owned-stock but semantically distinct, to prune its sub-tree.
-- [ ] **Stack-size awareness** — show how many inventory stacks a gather total is.
+- [x] **Stack-size awareness** — show how many inventory stacks a gather total is. *(1.3.0)*
 - [ ] **Time / XP estimates** per craft (the data has `baseDuration`, XP fields).
-- [ ] **Multiple saved lists** locally (and named lists once sharing lands).
+- [x] **Multiple saved lists** locally (and named lists once sharing lands), plus
+      archiving and a one-item quick list. *(1.3.0)*
 - [ ] **Assignments** — in a shared list, claim rows ("I've got the ore").
 - [ ] **Per-material biome surfacing** in-app (scrape source/biome text), reducing
       reliance on the external map link.
