@@ -3,7 +3,15 @@ import { iconUrl, searchItems } from "../lib/data.ts";
 import type { Item } from "../engine/types.ts";
 import { RarityTag } from "./RecipeTooltip.tsx";
 
-export function Search({ onAdd }: { onAdd: (itemId: string, quantity: number) => void }) {
+export function Search({
+  onAdd,
+  autoFocus = true,
+}: {
+  onAdd: (itemId: string, quantity: number) => void;
+  /** Off where the search isn't the page's main action, so it doesn't steal
+   * focus (and scroll) on load. */
+  autoFocus?: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [qtys, setQtys] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
@@ -37,7 +45,7 @@ export function Search({ onAdd }: { onAdd: (itemId: string, quantity: number) =>
         onFocus={() => setOpen(true)}
         onMouseDown={() => setOpen(true)}
         onKeyDown={(e) => e.key === "Escape" && setOpen(false)}
-        autoFocus
+        autoFocus={autoFocus}
       />
       {open && results.length > 0 && (
         <ul className="search-results">

@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { Search } from "./components/Search.tsx";
 import { PlanView } from "./components/PlanView.tsx";
+import { readPrefs, writePrefs } from "./lib/prefs.ts";
+import type { ViewPrefs } from "./engine/view.ts";
 import { Row } from "./components/Row.tsx";
 import { useList } from "./lib/useList.ts";
 import { getHandle, promptHandle } from "./lib/handle.ts";
@@ -87,6 +89,13 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
   const [copied, setCopied] = useState(false);
   const [handle, setHandleState] = useState<string | null>(getHandle());
   const [titleDraft, setTitleDraft] = useState(state.name);
+  // Per-browser view settings for this list. ListEditor is keyed by token, so a
+  // switch to another list remounts and the initializer re-runs against it.
+  const [prefs, setPrefs] = useState<ViewPrefs>(() => readPrefs(token));
+  const updatePrefs = useCallback(
+    (patch: Partial<ViewPrefs>) => setPrefs((p) => writePrefs(token, { ...p, ...patch })),
+    [token],
+  );
 
   // Keep the title input in sync when the name changes externally (e.g. a poll
   // adopts a collaborator's rename).
@@ -197,6 +206,10 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
             owned={state.owned}
             pathChoices={state.pathChoices}
             progress={progress}
+            prefs={prefs}
+            onPrefsChange={updatePrefs}
+            listName={state.name}
+            shareUrl={`${window.location.origin}/planner/${token}`}
             setOwned={setOwned}
             setPathChoice={setPathChoice}
           />

@@ -14,6 +14,7 @@ import type { ListState } from "./useList.ts";
 import { readKey, removeKey, writeKey } from "./storage.ts";
 import { VersionConflict, createList, getList, patchList } from "./api.ts";
 import { getHandle } from "./handle.ts";
+import { clearPrefs } from "./prefs.ts";
 
 const INDEX_KEY = "paxdei-planner:lists:v1";
 const CONTENT_PREFIX = "paxdei-planner:list:";
@@ -28,6 +29,9 @@ export interface ListEntry {
   targetCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Set when the user archives the list; absent means active. Optional so every
+   * already-stored entry stays valid without a migration. */
+  archivedAt?: string;
 }
 
 export const EMPTY_CONTENT: ListState = { name: DEFAULT_NAME, targets: [], owned: {}, pathChoices: {} };
@@ -187,10 +191,31 @@ export async function promoteLocalEntry(entry: ListEntry): Promise<ListEntry> {
   return updated ?? entry;
 }
 
+/** Archive or restore a list. Archiving hides it from the main directory without
+ * touching the shared list itself — anyone else's link keeps working.
+ *
+ * `updatedAt` is passed through explicitly: updateEntry defaults it to now, and
+ * the directory sorts by it, so archiving would otherwise yank the list to the
+ * top of the "recently touched" order at the moment you hide it.
+ *
+ * Restoring sets `archivedAt: undefined`; JSON.stringify drops the key on save,
+ * so the stored entry stays clean. Don't "fix" that to null — null persists and
+ * would then read as archived. */
+export function setArchived(id: string, archived: boolean): ListEntry | undefined {
+  const cur = getEntry(id);
+  if (!cur) return undefined;
+  return updateEntry(id, {
+    archivedAt: archived ? new Date().toISOString() : undefined,
+    updatedAt: cur.updatedAt,
+  });
+}
+
 export function deleteEntry(id: string): void {
+  const entry = getEntry(id);
   const entries = listEntries().filter((e) => e.id !== id);
   saveIndex(entries);
   removeContent(id); // harmless if it was already a shared (no local content) list
+  if (entry?.shareToken) clearPrefs(entry.shareToken); // don't leave orphan view prefs
 }
 
 /** Duplicate a list as a new list from a definition (targets + pathChoices, never

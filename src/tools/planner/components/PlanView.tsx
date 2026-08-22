@@ -1,5 +1,16 @@
+import { useMemo, useState } from "react";
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
+import { planToMarkdown } from "../engine/markdown.ts";
+import {
+  PRESETS,
+  PRESET_LABELS,
+  buildPlanView,
+  formatStacks,
+  type PlanRow,
+  type PlanSection,
+  type ViewPrefs,
+} from "../engine/view.ts";
 import type { ProgressMap } from "../lib/useList.ts";
 import { Row } from "./Row.tsx";
 
@@ -10,6 +21,11 @@ interface Props {
   /** Collaborative "have" entries keyed by item id (shared lists only); empty in
    * local mode. Used purely to attribute who last touched a row. */
   progress: ProgressMap;
+  prefs: ViewPrefs;
+  onPrefsChange: (patch: Partial<ViewPrefs>) => void;
+  /** List name and link, for the Markdown export header/footer. */
+  listName: string;
+  shareUrl: string;
   setOwned: (itemId: string, qty: number) => void;
   setPathChoice: (itemId: string, recipeId: string) => void;
 }
@@ -48,39 +64,163 @@ function OwnedInput({
   );
 }
 
-export function PlanView({ result, owned, pathChoices, progress, setOwned, setPathChoice }: Props) {
-  const { crafts, gather, warnings } = result;
-  if (crafts.length === 0 && gather.length === 0) {
+/** The craft-row summary: how many bench runs, the surplus a yield>1 recipe
+ * leaves, which profession does it, and how many inventory stacks it comes to. */
+function CraftMeta({ row }: { row: PlanRow }) {
+  if (row.satisfied) return <span className="meta">have enough</span>;
+  return (
+    <span className="meta">
+      {row.crafts} craft{row.crafts !== 1 ? "s" : ""}
+      {row.produced !== row.qty ? ` → makes ${row.produced}` : ""}
+      {row.profession ? ` · ${row.profession}` : ""}
+      {row.stacks ? ` · ${formatStacks(row.stacks)}` : ""}
+    </span>
+  );
+}
+
+/** How many inventory stacks an amount comes to — only shown when it's more
+ * than one, so short rows stay uncluttered. */
+function Stacks({ row }: { row: PlanRow }) {
+  if (!row.stacks) return null;
+  return <span className="meta">{formatStacks(row.stacks)}</span>;
+}
+
+/** Nothing unfinished in the plan blocks this craft — do it now. */
+function ReadyBadge({ row }: { row: PlanRow }) {
+  if (!row.ready) return null;
+  return (
+    <span className="badge-ready" title="No unfinished sub-crafts — nothing in the plan blocks this">
+      ready
+    </span>
+  );
+}
+
+/** A collapsible section heading. The caret and aria-expanded both reflect the
+ * stored collapse state; clicking anywhere on the heading toggles it. */
+function SectionHead({
+  section,
+  label,
+  onToggle,
+  as: Tag,
+  className,
+}: {
+  section: PlanSection;
+  label: string;
+  onToggle: () => void;
+  as: "h2" | "h3";
+  className?: string;
+}) {
+  return (
+    <Tag className={className}>
+      <button className="head-toggle" aria-expanded={!section.collapsed} onClick={onToggle}>
+        <span className="head-caret">{section.collapsed ? "▸" : "▾"}</span>
+        {label}
+      </button>
+    </Tag>
+  );
+}
+
+const CRAFT_HINTS: Record<ViewPrefs["preset"], string> = {
+  tiered: "By tier — craft top to bottom; final products are last.",
+  flat: "In dependency order — craft top to bottom.",
+  profession: "Grouped by profession, so work can be split by station.",
+};
+
+export function PlanView({
+  result,
+  owned,
+  pathChoices,
+  progress,
+  prefs,
+  onPrefsChange,
+  listName,
+  shareUrl,
+  setOwned,
+  setPathChoice,
+}: Props) {
+  const [copied, setCopied] = useState(false);
+  // The 3s poll re-renders this component with a stable `result`, so memoizing
+  // keeps the whole section/row tree from being rebuilt on every tick.
+  const vm = useMemo(() => buildPlanView(result, dataset.items, prefs), [result, prefs]);
+
+  async function copyMarkdown() {
+    setCopied(false);
+    try {
+      await navigator.clipboard.writeText(planToMarkdown(vm, { listName, url: shareUrl }));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard may be blocked */
+    }
+  }
+
+  const empty = result.crafts.length === 0 && result.gather.length === 0;
+  if (empty) {
     return <p className="hint">Add items above to see what to gather and craft.</p>;
   }
 
-  // Group crafts into tiers by dependency depth: final products at the bottom,
-  // their ingredients above, sub-materials above those, etc. An item used at
-  // several depths sits in its deepest (topmost) tier only. Within a tier,
-  // steps are sorted by profession so work can be split by station.
-  const byTier = new Map<number, typeof crafts>();
-  for (const c of crafts) {
-    const arr = byTier.get(c.tier) ?? [];
-    arr.push(c);
-    byTier.set(c.tier, arr);
-  }
-  const tiers = [...byTier.entries()]
-    .sort((a, b) => b[0] - a[0]) // deepest tier first (topmost on the page)
-    .map(([tier, steps]) => ({
-      tier,
-      steps: [...steps].sort(
-        (a, b) =>
-          (a.profession ?? "").localeCompare(b.profession ?? "") ||
-          itemName(a.itemId).localeCompare(itemName(b.itemId)),
-      ),
-    }));
-  const totalCrafts = crafts.reduce((n, c) => n + c.crafts, 0);
-  const gatherLeft = gather.filter((g) => !g.satisfied).length;
-  const craftsLeft = crafts.filter((c) => !c.satisfied).length;
+  const gatherSections = vm.sections.filter((s) => s.kind === "gather");
+  const craftSections = vm.sections.filter((s) => s.kind === "craft");
+  const flatSection = craftSections.find((s) => s.key === "craft:all");
+
+  const gatherRow = (row: PlanRow) => {
+    const item = getItem(row.itemId);
+    return (
+      <Row key={row.itemId} itemId={row.itemId} qty={row.qty} satisfied={row.satisfied}>
+        <Stacks row={row} />
+        <OwnedInput itemId={row.itemId} owned={owned} setOwned={setOwned} />
+        <By progress={progress} itemId={row.itemId} />
+        {sourceUrl(item) && (
+          <a className="map-link" href={sourceUrl(item)!} target="_blank" rel="noreferrer">
+            where?
+          </a>
+        )}
+      </Row>
+    );
+  };
+
+  const craftRow = (row: PlanRow) => {
+    const variants = dataset.recipes[row.itemId]?.variants ?? [];
+    return (
+      <Row key={row.itemId} itemId={row.itemId} qty={row.qty} satisfied={row.satisfied}>
+        <CraftMeta row={row} />
+        <ReadyBadge row={row} />
+        {variants.length > 1 && (
+          <select
+            className="path-select"
+            value={pathChoices[row.itemId] ?? row.recipeId ?? ""}
+            onChange={(e) => setPathChoice(row.itemId, e.target.value)}
+          >
+            {variants.map((v) => (
+              <option key={v.recipeId} value={v.recipeId}>
+                {v.ingredients.map((i) => `${itemName(i.itemId)}×${i.count}`).join(" + ")}
+              </option>
+            ))}
+          </select>
+        )}
+        <OwnedInput itemId={row.itemId} owned={owned} setOwned={setOwned} />
+        <By progress={progress} itemId={row.itemId} />
+      </Row>
+    );
+  };
+
+  const toggle = (section: PlanSection) => () =>
+    onPrefsChange({
+      collapsed: section.collapsed
+        ? prefs.collapsed.filter((k) => k !== section.key)
+        : [...prefs.collapsed, section.key],
+    });
+
+  const rowsOf = (section: PlanSection, render: (row: PlanRow) => JSX.Element) =>
+    section.collapsed ? null : (
+      <ul key={section.key} className="rows">
+        {section.rows.map(render)}
+      </ul>
+    );
 
   return (
     <div className="plan">
-      {warnings.map((w) => (
+      {vm.warnings.map((w) => (
         <div key={w} className="warning">
           ⚠ {w}
         </div>
@@ -88,81 +228,92 @@ export function PlanView({ result, owned, pathChoices, progress, setOwned, setPa
 
       <div className="summary">
         <span>
-          <b>{gatherLeft}</b> to gather
+          <b>{vm.totals.gatherLeft}</b> to gather
         </span>
         <span>
-          <b>{totalCrafts}</b> craft{totalCrafts !== 1 ? "s" : ""} in <b>{tiers.length}</b>{" "}
-          tier{tiers.length !== 1 ? "s" : ""}
+          <b>{vm.totals.totalCrafts}</b> craft{vm.totals.totalCrafts !== 1 ? "s" : ""} in{" "}
+          <b>{vm.totals.tierCount}</b> tier{vm.totals.tierCount !== 1 ? "s" : ""}
         </span>
         <span className="summary-hint">amounts already exclude what you have</span>
       </div>
 
+      <div className="view-toolbar">
+        <div className="seg" role="group" aria-label="Plan layout">
+          {PRESETS.map((id) => (
+            <button
+              key={id}
+              className="seg-btn"
+              aria-pressed={prefs.preset === id}
+              onClick={() => onPrefsChange({ preset: id })}
+            >
+              {PRESET_LABELS[id]}
+            </button>
+          ))}
+        </div>
+        <label className="toolbar-check">
+          <input
+            type="checkbox"
+            checked={prefs.hideCompleted}
+            onChange={(e) => onPrefsChange({ hideCompleted: e.target.checked })}
+          />
+          Hide completed
+        </label>
+        {vm.totals.hiddenCount > 0 && <span className="muted-note">{vm.totals.hiddenCount} hidden</span>}
+        <button className="link-btn toolbar-spacer" onClick={copyMarkdown}>
+          {copied ? "Copied!" : "Copy as Markdown"}
+        </button>
+      </div>
+
       <section className="panel">
-        <h2>Gather ({gatherLeft})</h2>
-        {gather.length === 0 && <p className="hint">Nothing to gather.</p>}
-        <ul className="rows">
-          {gather.map((g) => {
-            const item = getItem(g.itemId);
-            return (
-              <Row key={g.itemId} itemId={g.itemId} qty={g.needed} satisfied={g.satisfied}>
-                <OwnedInput itemId={g.itemId} owned={owned} setOwned={setOwned} />
-                <By progress={progress} itemId={g.itemId} />
-                {sourceUrl(item) && (
-                  <a className="map-link" href={sourceUrl(item)!} target="_blank" rel="noreferrer">
-                    where?
-                  </a>
-                )}
-              </Row>
-            );
-          })}
-        </ul>
+        {gatherSections.map((s) => (
+          <SectionHead
+            key={s.key}
+            as="h2"
+            section={s}
+            label={`Gather (${vm.totals.gatherLeft})`}
+            onToggle={toggle(s)}
+          />
+        ))}
+        {gatherSections.length === 0 && (
+          <>
+            <h2>Gather (0)</h2>
+            <p className="hint">Nothing to gather.</p>
+          </>
+        )}
+        {gatherSections.map((s) => rowsOf(s, gatherRow))}
       </section>
 
       <section className="panel">
-        <h2>Craft ({craftsLeft})</h2>
-        <p className="hint">By tier — craft top to bottom; final products are last.</p>
-        {tiers.map((group) => (
-          <div key={group.tier} className="prof-group">
-            <h3 className="prof-head">
-              {group.tier === 0 ? "Final products" : `Components · Tier ${group.tier}`}
-            </h3>
-            <ul className="rows">
-              {group.steps.map((c) => {
-                const variants = dataset.recipes[c.itemId]?.variants ?? [];
-                return (
-                  <Row key={c.itemId} itemId={c.itemId} qty={c.needed} satisfied={c.satisfied}>
-                    <span className="meta">
-                      {c.satisfied ? (
-                        "have enough"
-                      ) : (
-                        <>
-                          {c.crafts} craft{c.crafts !== 1 ? "s" : ""}
-                          {c.produced !== c.needed ? ` → makes ${c.produced}` : ""}
-                          {c.profession ? ` · ${c.profession}` : ""}
-                        </>
-                      )}
-                    </span>
-                    {variants.length > 1 && (
-                      <select
-                        className="path-select"
-                        value={pathChoices[c.itemId] ?? c.recipeId}
-                        onChange={(e) => setPathChoice(c.itemId, e.target.value)}
-                      >
-                        {variants.map((v) => (
-                          <option key={v.recipeId} value={v.recipeId}>
-                            {v.ingredients.map((i) => `${itemName(i.itemId)}×${i.count}`).join(" + ")}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <OwnedInput itemId={c.itemId} owned={owned} setOwned={setOwned} />
-                    <By progress={progress} itemId={c.itemId} />
-                  </Row>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+        {/* Under the flat preset the one section has no heading of its own — it
+            would only repeat the panel title — so the panel heading collapses it. */}
+        {flatSection ? (
+          <SectionHead
+            as="h2"
+            section={flatSection}
+            label={`Craft (${vm.totals.craftsLeft})`}
+            onToggle={toggle(flatSection)}
+          />
+        ) : (
+          <h2>Craft ({vm.totals.craftsLeft})</h2>
+        )}
+        <p className="hint">{CRAFT_HINTS[vm.preset]}</p>
+        {craftSections.length === 0 && <p className="hint">Nothing left to craft.</p>}
+        {craftSections.map((s) =>
+          s === flatSection ? (
+            rowsOf(s, craftRow)
+          ) : (
+            <div key={s.key} className="prof-group">
+              <SectionHead
+                as="h3"
+                className="prof-head"
+                section={s}
+                label={s.heading}
+                onToggle={toggle(s)}
+              />
+              {rowsOf(s, craftRow)}
+            </div>
+          ),
+        )}
       </section>
     </div>
   );

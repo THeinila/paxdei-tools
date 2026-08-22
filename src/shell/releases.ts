@@ -27,6 +27,50 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-08-23",
+    title: "See the plan your way",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "new",
+            text: "The plan can now be arranged three ways: by tier (as before), as one flat list in the order you'd work through it, or grouped by profession so you can split the work by station. Pick with the buttons above the plan.",
+          },
+          {
+            kind: "new",
+            text: "Hide completed tidies away everything you've already got, and every section heading now folds up — so a big keep project stops being a wall of rows.",
+          },
+          {
+            kind: "new",
+            text: "Craft steps show a \"ready\" badge when nothing else in the plan is holding them up, so it's obvious what you can go and do next.",
+          },
+          {
+            kind: "new",
+            text: "Big amounts now show how many inventory stacks they come to — \"2 stacks + 40\" — which is what you actually need to know before a hauling run.",
+          },
+          {
+            kind: "new",
+            text: "Copy as Markdown puts the whole plan on your clipboard as a tick-box checklist, ready to paste into Discord.",
+          },
+          {
+            kind: "new",
+            text: "Finished with a list? Archive it instead of deleting it — it moves out of the way but stays there, and the link keeps working for everyone else.",
+          },
+          {
+            kind: "new",
+            text: "You can now start a list straight from a single item on the planner's home page, without creating and naming one first.",
+          },
+          {
+            kind: "improved",
+            text: "How you arrange the plan is remembered for each list separately, and it's yours alone — on a shared list the gatherer and the crafter can each use the view that suits them.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.2.1",
     date: "2026-08-22",
     title: "Caught up with the game update",

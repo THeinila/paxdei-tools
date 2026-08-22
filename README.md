@@ -23,8 +23,14 @@ and divide the gathering/crafting, tracking each other's progress in near-real-t
   and the plan prunes it, sub-trees included.
 - **Alternative paths** — pick between recipes with genuinely different inputs
   (e.g. Charcoal from Sapwood vs Heartwood).
+- **Layout presets** — view the plan tiered, flat (dependency order), or grouped by
+  profession; hide completed rows and collapse any section. Remembered per list, per
+  browser, so collaborators each keep their own view.
+- **Ready badges** on craft steps nothing unfinished blocks, and **stack counts** on any
+  amount over one inventory stack.
+- **Copy as Markdown** — the plan as a tick-box checklist for Discord.
 - **Gather guidance** — per-material link to its gaming.tools source page.
-- Crafting list persists in local storage.
+- **List management** — named lists, duplicate, archive, and a one-item quick list.
 - **Sharing & collaboration** — hit **Share** to push the list to the backend and
   copy a secret link. Anyone with the link sets a display name and helps gather/craft;
   progress (a per-item "have" count) is shared, attributed, and synced by polling.
@@ -94,6 +100,10 @@ landing page; each tool is a self-contained module under `src/tools/<tool>/`.
   var is set (bearer auth); unset, the route 404s.
 - **`scripts/`** — re-runnable data pipeline (fetch → normalize → icons); see
   [scripts/README.md](scripts/README.md).
+
+Several features are modelled on FFXIV Teamcraft; see
+[docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md) for the feature comparison and
+what's still worth borrowing.
 
 Recipe data is sourced from [paxdei.gaming.tools](https://paxdei.gaming.tools/)
 (a single devalue-encoded `recipes.d.json` on their CDN). Fan project; not
