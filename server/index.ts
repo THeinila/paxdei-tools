@@ -4,10 +4,9 @@
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
-import type { Context } from "hono";
+import type { Context, Next } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
-import { sep } from "node:path";
 import { openDb } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
@@ -21,10 +20,12 @@ const app = new Hono();
 // (and any other unhashed file) must be revalidated so a redeploy is picked up
 // without a hard refresh — otherwise a stale cached index.html keeps loading an
 // old, deleted bundle and deep links mis-route to the landing page.
-const cacheHeaders = (path: string, c: Context) => {
-  c.header(
+const cacheControl = async (c: Context, next: Next) => {
+  await next();
+  if (c.res.headers.has("Cache-Control")) return;
+  c.res.headers.set(
     "Cache-Control",
-    path.includes(`${sep}assets${sep}`)
+    c.req.path.startsWith("/assets/")
       ? "public, max-age=31536000, immutable"
       : "no-cache",
   );
@@ -56,9 +57,10 @@ app.route("/api", createStatsRouter(db, { token: process.env.STATS_TOKEN }));
 // Paths are cwd-relative to match serveStatic; npm scripts and the systemd unit
 // (WorkingDirectory=) both run from the repo root.
 if (existsSync("./dist")) {
-  app.use("/*", serveStatic({ root: "./dist", onFound: cacheHeaders }));
+  app.use("/*", cacheControl);
+  app.use("/*", serveStatic({ root: "./dist" }));
   // SPA fallback so deep links (e.g. /planner/<token>) resolve to index.html.
-  app.get("*", serveStatic({ path: "./dist/index.html", onFound: cacheHeaders }));
+  app.get("*", serveStatic({ path: "./dist/index.html" }));
 }
 
 const port = Number(process.env.PORT ?? 8787);
