@@ -14,6 +14,7 @@ import type { ListState } from "./useList.ts";
 import { readKey, removeKey, writeKey } from "./storage.ts";
 import { VersionConflict, createList, getList, patchList } from "./api.ts";
 import { getHandle } from "./handle.ts";
+import { clearPrefs } from "./prefs.ts";
 
 const INDEX_KEY = "paxdei-planner:lists:v1";
 const CONTENT_PREFIX = "paxdei-planner:list:";
@@ -188,9 +189,11 @@ export async function promoteLocalEntry(entry: ListEntry): Promise<ListEntry> {
 }
 
 export function deleteEntry(id: string): void {
+  const entry = getEntry(id);
   const entries = listEntries().filter((e) => e.id !== id);
   saveIndex(entries);
   removeContent(id); // harmless if it was already a shared (no local content) list
+  if (entry?.shareToken) clearPrefs(entry.shareToken); // don't leave orphan view prefs
 }
 
 /** Duplicate a list as a new list from a definition (targets + pathChoices, never
