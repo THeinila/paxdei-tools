@@ -27,6 +27,34 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.2.1",
+    date: "2026-08-22",
+    title: "Caught up with the game update",
+    sections: [
+      {
+        changes: [
+          {
+            kind: "fixed",
+            text: "The site now reliably picks up updates — previously your browser could keep showing an older version of the app until you did a hard refresh.",
+          },
+        ],
+      },
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "improved",
+            text: "Item and station names now match the latest game update — crafting stations follow the new naming (the starter one is just \"Alchemy Table\", the upgraded one is \"Artisan Alchemy Table\"), and the Jewelry Making skill is now called Jewelcrafting.",
+          },
+          {
+            kind: "improved",
+            text: "Pure Glass and Intense Mead Base are no longer craftable in-game, so the planner now lists them as things you gather or trade for instead of breaking them down into ingredients.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-07-11",
     title: "One link for every list",
