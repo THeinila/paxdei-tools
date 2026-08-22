@@ -695,6 +695,20 @@ input[type="number"] {
   color: var(--accent);
 }
 
+/* Pushed to the right end of the toolbar. */
+.toolbar-spacer {
+  margin-left: auto;
+}
+/* .link-btn turns red on hover because its usual home is destructive actions;
+   the toolbar's buttons aren't, so they get the accent instead. */
+.view-toolbar .link-btn:hover {
+  color: var(--accent);
+}
+.muted-note {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .toolbar-check {
   display: inline-flex;
   align-items: center;

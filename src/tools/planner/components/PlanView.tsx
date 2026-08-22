@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
+import { planToMarkdown } from "../engine/markdown.ts";
 import {
   PRESETS,
   PRESET_LABELS,
@@ -22,6 +23,9 @@ interface Props {
   progress: ProgressMap;
   prefs: ViewPrefs;
   onPrefsChange: (patch: Partial<ViewPrefs>) => void;
+  /** List name and link, for the Markdown export header/footer. */
+  listName: string;
+  shareUrl: string;
   setOwned: (itemId: string, qty: number) => void;
   setPathChoice: (itemId: string, recipeId: string) => void;
 }
@@ -129,12 +133,26 @@ export function PlanView({
   progress,
   prefs,
   onPrefsChange,
+  listName,
+  shareUrl,
   setOwned,
   setPathChoice,
 }: Props) {
+  const [copied, setCopied] = useState(false);
   // The 3s poll re-renders this component with a stable `result`, so memoizing
   // keeps the whole section/row tree from being rebuilt on every tick.
   const vm = useMemo(() => buildPlanView(result, dataset.items, prefs), [result, prefs]);
+
+  async function copyMarkdown() {
+    setCopied(false);
+    try {
+      await navigator.clipboard.writeText(planToMarkdown(vm, { listName, url: shareUrl }));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard may be blocked */
+    }
+  }
 
   const empty = result.crafts.length === 0 && result.gather.length === 0;
   if (empty) {
@@ -240,9 +258,10 @@ export function PlanView({
           />
           Hide completed
         </label>
-        {vm.totals.hiddenCount > 0 && (
-          <span className="summary-hint">{vm.totals.hiddenCount} hidden</span>
-        )}
+        {vm.totals.hiddenCount > 0 && <span className="muted-note">{vm.totals.hiddenCount} hidden</span>}
+        <button className="link-btn toolbar-spacer" onClick={copyMarkdown}>
+          {copied ? "Copied!" : "Copy as Markdown"}
+        </button>
       </div>
 
       <section className="panel">

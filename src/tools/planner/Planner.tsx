@@ -208,6 +208,8 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
             progress={progress}
             prefs={prefs}
             onPrefsChange={updatePrefs}
+            listName={state.name}
+            shareUrl={`${window.location.origin}/planner/${token}`}
             setOwned={setOwned}
             setPathChoice={setPathChoice}
           />
