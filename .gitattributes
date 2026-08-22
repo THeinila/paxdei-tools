@@ -1,0 +1,11 @@
+# Normalise text in the repository, and let each checkout use its own convention.
+* text=auto
+
+# Shell scripts MUST be checked out with LF even on Windows. A CRLF shebang line
+# fails on Linux with "bad interpreter: /usr/bin/env bash^M", which would break
+# the deploy and backup scripts on the production host.
+*.sh text eol=lf
+
+# Same for anything else the Linux host executes or parses line-by-line.
+Caddyfile     text eol=lf
+*.service     text eol=lf

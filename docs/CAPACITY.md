@@ -117,6 +117,16 @@ The window is stated in the UI (`LIST_TTL_DAYS` in `shared/listTypes.ts`, shown
 in the planner footer). If an operator overrides the env var, that constant needs
 changing too or the app misstates its own policy.
 
+## Guard rails
+
+- **Disk.** `server/diskGuard.ts` refuses `POST /api/lists` with a 503 below
+  256 MB free (cached statfs, checked at most once a minute). It fails *open* —
+  an unmeasurable disk is not a full one, so a failed check never blocks writes.
+  `GET /healthz` reports the same condition, and `deploy/disk-alert.sh` warns at
+  80% / 90% from cron.
+- **Health.** `GET /healthz` touches the database, so a wedged SQLite file shows
+  up as a failure rather than a cheerful 200. `deploy.sh` gates on it.
+
 ## What is still unbounded
 
 - **`visitors` grows one row per unique IP forever.** Indexed now

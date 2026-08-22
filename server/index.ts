@@ -8,13 +8,16 @@ import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { existsSync } from "node:fs";
 import { sep } from "node:path";
-import { openDb } from "./db.ts";
+import { dbPathFor, openDb } from "./db.ts";
+import { createDiskGuard } from "./diskGuard.ts";
 import { createListsRouter } from "./lists.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
 import { isRead, rateLimit } from "./rateLimit.ts";
 import { startRetention, ttlDaysFromEnv } from "./retention.ts";
 
 const db = openDb();
+const diskGuard = createDiskGuard({ path: dbPathFor() });
+void diskGuard.refresh();
 const app = new Hono();
 
 // Cache policy for the static SPA. Vite content-hashes everything under /assets,
@@ -66,8 +69,12 @@ app.use(
   rateLimit({ name: "write", limit: 120, windowMs: 60_000, when: (c) => !isRead(c) }),
 );
 // List creation is the one unauthenticated endpoint that grows the database, so
-// it keeps its own, much slower budget on top of the write cap above.
+// it keeps its own, much slower budget on top of the write cap above, plus a
+// hard stop when the volume is nearly full (see server/diskGuard.ts — a full
+// disk risks SQLite corruption and takes the OS down with it, so we would much
+// rather refuse new lists than reach it).
 app.post("/api/lists", rateLimit({ name: "create", limit: 600, windowMs: 60 * 60_000 }));
+app.post("/api/lists", diskGuard.middleware());
 
 // The crafting planner's API. As the suite grows, each tool mounts its own
 // router under its own namespace (e.g. app.route("/api/<tool>", ...)) so routes
@@ -84,10 +91,13 @@ app.route("/api", createStatsRouter(db, { token: process.env.STATS_TOKEN }));
 app.get("/healthz", (c) => {
   try {
     db.prepare("SELECT 1").get();
-    return c.text("ok");
   } catch {
     return c.text("db unavailable", 503);
   }
+  // Surface low disk as unhealthy so an uptime check catches it before the
+  // volume actually fills. Still a 200 for "ok" so the probe stays trivial.
+  if (diskGuard.status().low) return c.text("disk low", 503);
+  return c.text("ok");
 });
 
 // Serve the production build when present (no-op in dev, where Vite serves it).

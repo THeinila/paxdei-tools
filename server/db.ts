@@ -20,13 +20,19 @@ function defaultDbPath(): string {
   return resolve(process.cwd(), "server", "data.sqlite");
 }
 
+/** The path openDb() would use. Exported so callers that need to reason about
+ * the database's location (e.g. the disk-space guard) resolve it identically. */
+export function dbPathFor(file?: string): string {
+  return file ?? process.env.DB_PATH ?? defaultDbPath();
+}
+
 /** Open a connection, apply pragmas, and run idempotent migrations.
  * Pass ":memory:" (the default for tests) or an absolute file path. When no
  * argument is given, honor DB_PATH so a deployment can keep the database on a
- * persistent volume outside the code checkout; otherwise fall back to a file
- * next to the server. */
+ * persistent volume outside the code checkout; otherwise fall back to
+ * defaultDbPath(). */
 export function openDb(file?: string): DB {
-  const path = file ?? process.env.DB_PATH ?? defaultDbPath();
+  const path = dbPathFor(file);
   const db = new Database(path);
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");

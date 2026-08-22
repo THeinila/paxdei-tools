@@ -237,6 +237,34 @@ curl -H "Authorization: Bearer <STATS_TOKEN>" https://<host>/api/stats
 
 Without `STATS_TOKEN` the endpoint doesn't exist (404); collection still runs.
 
+## Monitoring
+
+Two critical failure modes used to be silent: the box going down, and the volume
+filling up. Both now announce themselves.
+
+**Uptime.** `GET /healthz` returns `ok` (200) when the process is up and the
+database answers, and 503 when the database is unreachable or free space is
+below the guard's floor. Point any free external pinger at
+`https://<host>/healthz` — `deploy.sh` gates on the same endpoint. It is
+deliberately detail-free, so it is safe to leave unauthenticated.
+
+**Disk.** [`disk-alert.sh`](disk-alert.sh) warns at 80% and shouts at 90%,
+listing the usual space hogs so you do not have to go looking:
+
+```bash
+sudo cp deploy/disk-alert.sh /usr/local/bin/pax-planner-disk-alert
+sudo chmod +x /usr/local/bin/pax-planner-disk-alert
+crontab -e   # */30 * * * * /usr/local/bin/pax-planner-disk-alert
+journalctl -t pax-planner-disk --since '7 days ago'
+```
+
+Defence in depth, in the order it engages: the retention sweep bounds growth over
+time; `server/diskGuard.ts` refuses **new list creation** (503) below 256 MB free
+while leaving existing lists fully usable; this cron tells a human. Reaching an
+actually-full volume is the case worth avoiding — SQLite in WAL mode can be left
+corrupt, and journald and sshd fail too, so you may not be able to log in to fix
+it.
+
 ## Verification (run after deploy)
 
 1. **TLS + serve:** `curl -I https://<host>` returns 200; browser shows a valid
