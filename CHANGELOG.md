@@ -5,6 +5,31 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.2.1] — 2026-08-22
+
+### Crafting Planner 1.2.1
+- Game data refreshed from upstream (2026-08-22). Item and recipe counts are
+  unchanged (2174 items); the update is a naming pass plus two removals.
+- Crafting skill `skill_jewelerycrafting` renamed **Jewelry Making → Jewelcrafting**
+  upstream (52 recipes). The skill id is unchanged and the app treats the profession
+  as an opaque display/sort string, so this flows through with no code change.
+- 70 items renamed, mostly the crafting-station tier scheme: the tier-1 name loses its
+  `Basic ` prefix and the tier-2 name gains `Artisan ` (e.g. "Basic Alchemy Table" →
+  "Alchemy Table", and the old "Alchemy Table" → "Artisan Alchemy Table"). Note the
+  tier-2 rename reuses a name that previously belonged to tier 1, so a search for the
+  bare station name now matches the tier-1 station. Also "Plank" → "Wooden Plank",
+  "Bird Feathers" → "Feathers", "Hawthorne Heartwood" → "Hawthorn Heartwood".
+- **Pure Glass** and **Intense Mead Base** lost their only recipe upstream and are now
+  gathered raw materials rather than crafts (`recipeCount` 1707 → 1705). They remain in
+  the item catalog via the market feed, so they still appear in search and can still be
+  added to a list — the planner just no longer expands them into ingredients.
+- A duplicate by-hand Wooden Arrow recipe was dropped upstream; no dataset effect, as
+  the same-input rule already collapsed it into the surviving yield-5 recipe.
+- Verified: both source files' schema is byte-for-byte structurally identical to the
+  previous fetch, the market catalog is unchanged, all normalization rules held (same
+  2 forced-raw, 5 dropped refinements, 11 items with alternative paths), no dangling
+  ingredient references, and all 1693 craftable items plan without warnings.
+
 ## [1.2.0] — 2026-07-11
 
 ### Toolkit
