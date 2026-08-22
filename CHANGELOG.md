@@ -7,6 +7,17 @@ See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
 ## [1.2.1] — 2026-08-22
 
+### Toolkit
+- Fixed the `Cache-Control` policy added in 1.2.0, which never reached the wire:
+  `@hono/node-server` 2.0.6 invokes `serveStatic`'s `onFound` *after* the response
+  body is built, so headers set on the context there are discarded. `index.html` was
+  served with no `Cache-Control` at all, leaving browsers to cache it heuristically —
+  the exact stale-bundle failure 1.2.0 set out to fix. The policy is now applied by a
+  middleware that sets the header on `c.res` after `next()`, keyed off the request
+  path (the old check also tested a `node:path` `sep` that never matches on Windows).
+  Verified against a built `dist/`: `/`, `/index.html` and deep links are `no-cache`,
+  `/assets/*` is `immutable`, API responses are untouched (`server/index.ts`).
+
 ### Crafting Planner 1.2.1
 - Game data refreshed from upstream (2026-08-22). Item and recipe counts are
   unchanged (2174 items); the update is a naming pass plus two removals.
