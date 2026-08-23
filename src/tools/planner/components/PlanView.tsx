@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { dataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
+import { getDataset, getItem, itemName, sourceUrl } from "../lib/data.ts";
 import type { Plan } from "../engine/planner.ts";
 import { planToMarkdown } from "../engine/markdown.ts";
 import {
@@ -141,7 +141,7 @@ export function PlanView({
   const [copied, setCopied] = useState(false);
   // The 3s poll re-renders this component with a stable `result`, so memoizing
   // keeps the whole section/row tree from being rebuilt on every tick.
-  const vm = useMemo(() => buildPlanView(result, dataset.items, prefs), [result, prefs]);
+  const vm = useMemo(() => buildPlanView(result, getDataset().items, prefs), [result, prefs]);
 
   async function copyMarkdown() {
     setCopied(false);
@@ -180,7 +180,7 @@ export function PlanView({
   };
 
   const craftRow = (row: PlanRow) => {
-    const variants = dataset.recipes[row.itemId]?.variants ?? [];
+    const variants = getDataset().recipes[row.itemId]?.variants ?? [];
     return (
       <Row key={row.itemId} itemId={row.itemId} qty={row.qty} satisfied={row.satisfied}>
         <CraftMeta row={row} />

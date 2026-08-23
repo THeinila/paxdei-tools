@@ -111,10 +111,10 @@ export function createListsRouter(db: DB) {
     const create = db.transaction(() => {
       const info = db
         .prepare(
-          `INSERT INTO lists (share_token, version, state, created_at, updated_at)
-           VALUES (?, 0, ?, ?, ?)`,
+          `INSERT INTO lists (share_token, version, state, created_at, updated_at, last_activity_at)
+           VALUES (?, 0, ?, ?, ?, ?)`,
         )
-        .run(token, JSON.stringify(state), ts, ts);
+        .run(token, JSON.stringify(state), ts, ts, ts);
       const listId = Number(info.lastInsertRowid);
       const seed = db.prepare(
         `INSERT INTO progress (list_id, item_id, qty, by_handle, updated_at)
@@ -159,10 +159,10 @@ export function createListsRouter(db: DB) {
     const ts = now();
     const info = db
       .prepare(
-        `UPDATE lists SET state = ?, version = version + 1, updated_at = ?
+        `UPDATE lists SET state = ?, version = version + 1, updated_at = ?, last_activity_at = ?
          WHERE share_token = ? AND version = ?`,
       )
-      .run(JSON.stringify(state), ts, token, body.baseVersion);
+      .run(JSON.stringify(state), ts, ts, token, body.baseVersion);
 
     const row = findList.get(token) as ListRow | undefined;
     if (!row) return c.json({ error: "not found" }, 404);
@@ -209,6 +209,12 @@ export function createListsRouter(db: DB) {
          ON CONFLICT(list_id, item_id) DO UPDATE SET
            qty = excluded.qty, by_handle = excluded.by_handle, updated_at = excluded.updated_at`,
       ).run(listId, item, next, handle, ts);
+      // Ticking items off is the main sign of life on a settled list — a group
+      // that has finalised its targets may never PATCH again. Without this the
+      // retention sweep would delete lists that are actively being worked.
+      // Deliberately NOT bumping `updated_at`: that tracks the definition, and
+      // moving it here would make the list look edited when it wasn't.
+      db.prepare(`UPDATE lists SET last_activity_at = ? WHERE id = ?`).run(ts, listId);
     });
     applyDelta(row.id, itemId);
 

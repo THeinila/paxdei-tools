@@ -64,7 +64,8 @@ normalization rules, and how to update or curate the game data.
 | `npm run server` | Share backend (Hono + SQLite) on port 8787 |
 | `npm run dev:all` | Frontend + backend together (sharing enabled) |
 | `npm run build` | Production build to `dist/` |
-| `npm start` | Serve the built SPA **and** the API from one origin |
+| `npm start` | Serve the built SPA **and** the API from one origin (compiled server) |
+| `npm run build:server` | Compile the backend to `dist-server/` (esbuild) |
 | `npm test` | Recipe-engine + backend tests (vitest) |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run data` | Full data pipeline (fetch → normalize → icons) |
@@ -86,20 +87,32 @@ landing page; each tool is a self-contained module under `src/tools/<tool>/`.
   - **`engine/`** — pure-TS recipe engine (`planner.ts`): tree flattening,
     owned-stock subtraction, dependency-tier assignment, alternative-path
     selection, cycle guard. Unit-tested.
-  - **`components/`, `lib/`** — React UI (search, crafting list, plan view).
+  - **`components/`, `lib/`** — React UI (search, crafting list, plan view). The
+    ~1.5 MB item dataset is a lazily loaded, separately-hashed chunk
+    (`loadDataset()` in `lib/data.ts`), so the shell and landing page never pay
+    for it and a code-only deploy leaves the cached copy valid.
     `useList` runs in two modes: local (localStorage) or shared (server-backed,
     polled). The shared "have" map is fed into the engine exactly as owned stock.
 - **`server/`** — share backend (Hono + better-sqlite3). Two concurrency strategies:
   progress writes are atomic additive deltas (`qty = qty + delta`, no lost updates);
   list-definition edits are version-guarded (optimistic concurrency → 409 + rebase).
   The planner's routes live under `/api/lists*`; future tools mount their own
-  routers under `/api/<tool>/…`. Also collects **privacy-preserving usage metrics**
+  routers under `/api/<tool>/…`. Shared lists are swept after
+  `LIST_TTL_DAYS` (default 90) with no writes (`server/retention.ts`) — without
+  that, the unauthenticated create endpoint was an unbounded-growth path.
+  `GET /healthz` is a liveness probe for uptime checks and the deploy script. Also collects **privacy-preserving usage metrics**
   (`server/metrics.ts`): aggregate daily event counters and unique visitors via an
   HMAC-hashed client IP — no cookies, no client-side tracking code, raw IPs never
   stored. Aggregates are served at `GET /api/stats` only when a `STATS_TOKEN` env
   var is set (bearer auth); unset, the route 404s.
 - **`scripts/`** — re-runnable data pipeline (fetch → normalize → icons); see
-  [scripts/README.md](scripts/README.md).
+  [scripts/README.md](scripts/README.md). `build-server.mjs` compiles the backend
+  for production so nothing on the start path comes from devDependencies.
+- **`deploy/`** — the production runbook ([DEPLOY.md](deploy/DEPLOY.md)), an
+  atomic release-and-rollback script, a database backup script, the Caddy config
+  and the systemd unit. The host is a 1/8-OCPU / 1 GB free-tier VM, and
+  [docs/CAPACITY.md](docs/CAPACITY.md) records what that budget implies for every
+  tuning constant in the serving path.
 
 Several features are modelled on FFXIV Teamcraft; see
 [docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md) for the feature comparison and

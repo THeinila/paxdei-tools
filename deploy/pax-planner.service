@@ -3,13 +3,25 @@ Description=pax-planner sharing backend (Hono + SQLite, serves built SPA)
 After=network.target
 
 [Service]
-WorkingDirectory=/opt/pax-planner
-ExecStart=/usr/bin/npm start
+# Runs from the `current` symlink, which deploy.sh swaps atomically once a new
+# release has built AND passed its health check. Do NOT point this at a release
+# directory directly, or rollback stops working.
+WorkingDirectory=/opt/pax-planner/current
+# Compiled server (esbuild -> dist-server/), so nothing on the start path comes
+# from devDependencies. `npm start` is a thin wrapper over this same command.
+ExecStart=/usr/bin/node dist-server/index.js
 # Keep the API on loopback; Caddy is the only public listener.
 Environment=PORT=8787
 Environment=HOST=127.0.0.1
-# Persist the SQLite file outside the git checkout so `git pull` never touches it.
+# Persist the SQLite file outside every release directory so deploys and
+# rollbacks never touch it.
 Environment=DB_PATH=/opt/pax-planner/data/data.sqlite
+# Shared lists are deleted after this many days with no writes (see
+# server/retention.ts). Set to 0 to keep them forever — but note that nothing
+# else bounds database growth, and the volume is shared with the OS.
+# Changing this also means updating LIST_TTL_DAYS in shared/listTypes.ts, which
+# is what the UI tells users.
+Environment=LIST_TTL_DAYS=90
 # Uncomment (with your own random secret) to enable GET /api/stats — anonymous
 # aggregate usage metrics (see server/metrics.ts). Left unset, the route 404s.
 #Environment=STATS_TOKEN=change-me

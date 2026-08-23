@@ -14,6 +14,7 @@ import {
   resolveEntry,
   updateEntry,
 } from "./lib/directory.ts";
+import { LIST_TTL_DAYS } from "../../../shared/listTypes.ts";
 
 // A share token is base64url of 16 random bytes → 22 chars. A legacy local id is
 // a UUID (dashes) or an `l_…` fallback, so this cleanly tells an unknown-but-
@@ -216,7 +217,10 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
         </>
       )}
 
-      <p className="tool-note">Recipe data from paxdei.gaming.tools · inspired by FFXIV Teamcraft</p>
+      <p className="tool-note">
+        Shared lists are deleted after {LIST_TTL_DAYS} days with no changes · Recipe data from
+        paxdei.gaming.tools · inspired by FFXIV Teamcraft
+      </p>
     </>
   );
 }

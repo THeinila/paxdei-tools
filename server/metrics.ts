@@ -22,12 +22,14 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Count one occurrence of a named event for today. */
-export function bumpMetric(db: DB, metric: string): void {
+/** Count occurrences of a named event for today (one by default). */
+export function bumpMetric(db: DB, metric: string, by = 1): void {
+  if (!Number.isFinite(by) || by <= 0) return;
+  const n = Math.floor(by);
   db.prepare(
-    `INSERT INTO metrics (day, metric, count) VALUES (?, ?, 1)
-     ON CONFLICT(day, metric) DO UPDATE SET count = count + 1`,
-  ).run(today(), metric);
+    `INSERT INTO metrics (day, metric, count) VALUES (?, ?, ?)
+     ON CONFLICT(day, metric) DO UPDATE SET count = count + excluded.count`,
+  ).run(today(), metric, n);
 }
 
 /** The HMAC key for visitor hashes: random, generated once, kept in the DB so
