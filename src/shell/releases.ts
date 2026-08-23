@@ -27,6 +27,38 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.4.0",
+    date: "2026-08-23",
+    title: "Faster, and easier to share",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "improved",
+            text: "The site loads a lot faster — noticeably so on the first visit, on a phone, or on a slow connection. Opening a list is quicker too.",
+          },
+          {
+            kind: "fixed",
+            text: "Sharing a connection with other players — the same house, or the same mobile network — could make the planner start refusing to work for everyone. Several people can now use a list from one connection without tripping over each other.",
+          },
+          {
+            kind: "fixed",
+            text: "A count you had just changed could briefly flip back to its old number before correcting itself. It now stays where you put it.",
+          },
+          {
+            kind: "improved",
+            text: "A list left open in a background tab pauses until you come back to it, which is kinder to phone batteries and mobile data. Switching back to it refreshes straight away. While you are looking at a list, other people's changes appear within about ten seconds.",
+          },
+          {
+            kind: "new",
+            text: "Shared lists are now kept for 90 days after the last change. Anything anyone is still adding to or ticking off stays put — only genuinely forgotten lists are cleared out. Every list shows this at the bottom.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-08-23",
     title: "See the plan your way",

@@ -5,6 +5,98 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.4.0] — 2026-08-23
+
+Capacity, correctness and operations work against the real production shape: an Oracle
+Always Free `VM.Standard.E2.1.Micro` — 1/8 OCPU and 1 GB RAM, roughly 125 ms of full-core
+CPU per wall second. [docs/CAPACITY.md](docs/CAPACITY.md) records the arithmetic behind
+every constant below.
+
+### Crafting Planner 1.4.0
+- **Poll interval 3s → 10s**, with jitter, no overlapping requests, paused while the tab is
+  hidden, and an immediate catch-up poll on focus. Roughly 3× the concurrent-tab ceiling.
+- **Progress writes are fenced per item** on a monotonic poll sequence number. A snapshot
+  the server built *before* a local write committed could previously land afterwards and
+  roll that write back on screen until the next tick — a 3-second flicker that widening
+  the poll would have turned into a 10-second wrong value. A snapshot may now only replace
+  an item's value if its poll was issued after the write was acknowledged. The rules live
+  in `lib/progressMerge.ts` as a pure function so the ordering cases are testable directly.
+- `setOwned` reads a **synchronous progress mirror** rather than React state, mirroring the
+  existing `defRef` pattern. It takes an absolute quantity but sends a delta, so two quick
+  edits ("5", then "8") each subtracted from 0 and landed on 13.
+- **Failed progress writes roll back** instead of leaving an unsaved value looking saved.
+- **Definition edits rebase up to 3 times** instead of once; clients hold a stale version
+  longer at a 10s poll, so genuine 409s are more common.
+- **The item dataset is a lazily loaded, separately-hashed chunk.** It is ~1.5 MB and was
+  inlined into the main bundle, sharing its content hash — so every code deploy invalidated
+  it and re-sent the whole catalogue. Main bundle 1,820 kB → 248 kB (182 kB → 82 kB
+  gzipped); landing page ~185 KB → ~85 KB. Consumers keep the synchronous API via
+  `getDataset()`, which throws rather than returning an empty catalogue if reached before
+  the load resolves.
+- The planner footer states the **90-day retention window**, from a constant shared with
+  the server so the UI cannot misstate the policy.
+
+### Toolkit 1.4.0
+
+#### Serving cost
+- Caddy compresses (`encode zstd gzip`); nothing was compressed at all before.
+- `/icons/` gets a 30-day cache policy. Icons fell into the `no-cache` bucket, and
+  `@hono/node-server`'s `serveStatic` sends `Last-Modified` but never answers a
+  conditional request with a 304 — so every reload re-downloaded every icon on screen in
+  full (~75 ms of CPU per page view). Long `max-age` rather than `immutable` so replaced
+  artwork self-heals within a month.
+
+#### Rate limits
+- **Split by method**: reads 240/min, writes 120/min, creates 600/hour. The old flat
+  60/min sat *below* the app's own poll rate — the limiter keys on client IP, so a few
+  tabs behind one NAT exhausted the allowance and the app 429'd people for normal use.
+- `clientKey()` falls back to the peer socket address before the global `_shared` bucket,
+  so bypassing the proxy no longer collapses every client into one budget.
+
+#### Retention
+- Lists with no **write** activity for `LIST_TTL_DAYS` (default 90, `0` disables) are
+  swept daily, progress cascading with them. `POST /api/lists` is unauthenticated and
+  nothing ever deleted a list, so the database only grew — and it shares the boot volume
+  with the OS.
+- `updated_at` was the wrong clock: it moves with `version`, i.e. only on definition
+  edits, so a group that had settled its targets and was only ticking items off would look
+  untouched and be swept while in active use. Progress writes bump a separate
+  `last_activity_at` and deliberately leave `updated_at` alone. Reads do not count — that
+  would mean a write on every poll.
+- The migration backfills `last_activity_at` from the later of the definition timestamp
+  and any progress against the list, so the first sweep after deploying cannot delete
+  lists that are in use.
+
+#### Operations
+- **`deploy/deploy.sh`**: each release is built as a git worktree in its own directory,
+  and `current` only moves after the build, typecheck, tests *and* a `/healthz` probe
+  pass — rolling back automatically otherwise. The old flow built in the live directory,
+  where an OOM-killed `npm ci` left no `node_modules` and no way back.
+- **The server is compiled** (`scripts/build-server.mjs`, esbuild → `dist-server/`), so
+  `npm start` is plain `node` and nothing on the production start path is a
+  devDependency. `npm prune --omit=dev` runs after each build.
+- **`deploy/backup.sh`**: consistent `sqlite3 .backup` snapshots on cron (not `cp` — the
+  server holds the database open in WAL mode). The off-box copy is scripted but must be
+  enabled by hand.
+- **`server/diskGuard.ts`** refuses `POST /api/lists` with a 503 below 256 MB free,
+  failing *open* if the disk cannot be measured. `GET /healthz` reports it, and
+  `deploy/disk-alert.sh` warns from cron at 80% / 90%.
+- `openDb()`'s default path is anchored to cwd rather than the module's directory:
+  bundling moved the module, so `npm start` silently opened a different, empty database
+  than `npm run server` had been using.
+- `.gitattributes` pins `*.sh` to `eol=lf`. A CRLF shebang fails on Linux with
+  `bad interpreter: /usr/bin/env bash^M`, which would break exactly the deploy and backup
+  scripts meant to be the safety net.
+- Indexes on `visitors(first_seen, last_seen)`; `/api/stats` grouped by both with no index.
+
+#### Security
+- A strict **Content-Security-Policy** (`default-src 'self'`, `script-src 'self'` with no
+  `unsafe-*`), plus `nosniff`, `Referrer-Policy` and `X-Frame-Options`, set by the app in
+  `server/securityHeaders.ts` rather than the proxy — the policy has to change when the
+  app loads something new, so it belongs next to the code that would break it and is
+  testable locally. Caddy keeps HSTS. The only relaxation is inline *styles*, which the
+  recipe tooltip needs to position itself.
+
 ## [1.3.0] — 2026-08-23
 
 ### Crafting Planner 1.3.0
