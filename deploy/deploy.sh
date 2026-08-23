@@ -29,12 +29,27 @@ REPO="$ROOT/repo"
 RELEASES="$ROOT/releases"
 CURRENT="$ROOT/current"
 KEEP="${KEEP_RELEASES:-5}"
+ICON_CACHE="$ROOT/icons-cache"
 SERVICE="${SERVICE_NAME:-pax-planner}"
 
 log() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 die() { printf '\033[31merror: %s\033[0m\n' "$*" >&2; exit 1; }
 
+service_installed() {
+  systemctl list-unit-files "$SERVICE.service" --no-legend 2>/dev/null | grep -q .
+}
+
 restart_and_verify() {
+  # First deploy: the unit is installed in a later step, so there is nothing to
+  # restart yet and no health endpoint to probe. Activating the symlink is still
+  # the right outcome — don't report that as a failed deploy.
+  if ! service_installed; then
+    log "systemd unit '$SERVICE' not installed yet — skipping restart"
+    echo "  next: sudo cp $CURRENT/deploy/pax-planner.service /etc/systemd/system/"
+    echo "        sudo systemctl daemon-reload && sudo systemctl enable --now $SERVICE"
+    return 0
+  fi
+
   log "Restarting $SERVICE"
   sudo systemctl restart "$SERVICE"
 
@@ -89,15 +104,19 @@ trap cleanup_failed ERR
 
 cd "$TARGET"
 
-# Reuse the previous release's icons: they are a gitignored build artifact and
-# re-downloading ~2000 files on every deploy is slow and pointless.
-if [[ -d "$CURRENT/public/icons" ]]; then
-  mkdir -p "$TARGET/public/icons"
-  cp -rn "$CURRENT/public/icons/." "$TARGET/public/icons/" 2>/dev/null || true
-fi
+# Icons are a gitignored build artifact (~2000 files, ~20 MB) regenerated from
+# the committed dataset. Keep them in a cache shared by every release: seeding
+# from `current` would not work on a first deploy, and re-downloading them all on
+# a 1/8-OCPU box takes a long time for no reason.
+mkdir -p "$ICON_CACHE"
+mkdir -p "$TARGET/public/icons"
+cp -rn "$ICON_CACHE/." "$TARGET/public/icons/" 2>/dev/null || true
 
 npm ci
-npm run fetch:icons
+npm run fetch:icons          # downloads only what the cache was missing
+
+# Fold anything new back into the cache for the next release.
+cp -rn "$TARGET/public/icons/." "$ICON_CACHE/" 2>/dev/null || true
 npm run build          # vite -> dist/, esbuild -> dist-server/
 npm run typecheck
 npm test

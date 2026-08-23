@@ -114,8 +114,11 @@ Then cut the first release:
 The script builds into `releases/<timestamp>-<sha>/`, runs `npm ci`,
 `fetch:icons`, `build` (Vite → `dist/`, esbuild → `dist-server/`), `typecheck`
 and the tests, prunes devDependencies, and only then points `current` at it. On
-the very first run there is no service to health-check yet — do Step 5 and
-re-run.
+the very first run it notices the systemd unit does not exist yet and skips the
+restart rather than reporting a failure — carry on to Step 5.
+
+Icons live in a cache shared by every release (`/opt/pax-planner/icons-cache`),
+so the ~2000 files are downloaded once rather than per deploy.
 
 > **1 GB is tight.** Add swap before the first build if the instance has none:
 > ```bash
