@@ -12,13 +12,12 @@ paxdei.erech.fi {
 	encode zstd gzip
 
 	header {
-		# HSTS. Caddy redirects http->https but does not send this by default.
+		# HSTS only. Caddy redirects http->https but does not send this by
+		# default. Everything else (CSP, nosniff, Referrer-Policy, X-Frame-Options)
+		# is set by the app in server/securityHeaders.ts, so the policy lives next
+		# to the code that would break it — setting them here too would just send
+		# every header twice.
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-		# Never let a browser second-guess a declared Content-Type.
-		X-Content-Type-Options "nosniff"
-		# Share tokens travel in the URL path, so keep them out of Referer on any
-		# cross-origin navigation (the in-app outbound links also set rel=noreferrer).
-		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
 	reverse_proxy 127.0.0.1:8787

@@ -198,6 +198,14 @@ deploys and rollbacks never touch it.
   see [../docs/CAPACITY.md](../docs/CAPACITY.md). If you change the env var,
   change `LIST_TTL_DAYS` in `shared/listTypes.ts` too — that is what the UI
   tells users.
+- **Security headers** are set by the app (`server/securityHeaders.ts`), not by
+  Caddy: a CSP is a property of the application, so it belongs next to the code
+  that would break it. The app loads no third-party assets — game data is bundled
+  and icons are served locally — so the policy is a strict `default-src 'self'`,
+  relaxed only for inline *styles* (the recipe tooltip positions itself with a
+  computed `style` attribute). `script-src` stays `'self'` with no `unsafe-*`.
+  Caddy keeps HSTS, which is genuinely transport-level. Don't set the same
+  headers in both places or every response carries them twice.
 - Enable `unattended-upgrades` for OS patches.
 
 ## Backups (do this — it is the biggest single risk)

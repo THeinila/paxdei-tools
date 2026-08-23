@@ -13,6 +13,7 @@ import { createDiskGuard } from "./diskGuard.ts";
 import { createListsRouter } from "./lists.ts";
 import { createStatsRouter, visitorTracking } from "./metrics.ts";
 import { isRead, rateLimit } from "./rateLimit.ts";
+import { securityHeaders } from "./securityHeaders.ts";
 import { startRetention, ttlDaysFromEnv } from "./retention.ts";
 
 const db = openDb();
@@ -46,6 +47,10 @@ const cacheHeaders = (path: string, c: Context) => {
   }
   c.header("Cache-Control", policy);
 };
+
+// Security headers on every response (see server/securityHeaders.ts). Set here
+// rather than in Caddy because the policy is a property of the app.
+app.use("*", securityHeaders());
 
 // Anonymous usage metrics (unique visitors + event counters, server-side only;
 // see server/metrics.ts). First so even rate-limited requests count as a visit.
