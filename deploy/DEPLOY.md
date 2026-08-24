@@ -111,6 +111,11 @@ Then cut the first release:
 /opt/pax-planner/repo/deploy/deploy.sh origin/main
 ```
 
+> If that reports **Permission denied**, the executable bit did not survive the
+> clone — which happens when the scripts were last committed from a machine with
+> `core.filemode=false` (Windows). `bash deploy/deploy.sh …` works regardless, and
+> the durable fix is `git update-index --chmod=+x deploy/*.sh` in the repo.
+
 The script builds into `releases/<timestamp>-<sha>/`, runs `npm ci`,
 `fetch:icons`, `build` (Vite → `dist/`, esbuild → `dist-server/`), `typecheck`
 and the tests, prunes devDependencies, and only then points `current` at it. On
