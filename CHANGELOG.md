@@ -5,6 +5,59 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.5.0] — 2026-10-30
+
+### Crafting Planner 1.5.0
+- Game data refreshed from upstream (2026-10-30): 1763 recipes (was 1730), 2100 items
+  (was 2174), 1735 recipe variants across 1723 output items (was 1705 across 1693).
+- **New craftable content**: mounts gear — 9 saddles across riding/pack/courser lines,
+  tiers 1–4 (`mounts` is a new `mainCategoryId`); 9 Shepherd's Hushed Canopy helms
+  (tiers 2–4 × common/uncommon/rare); 9 Ancient Sylvan Staves (tiers 2–4 × rarity);
+  and three Radiant Hart / summer props (Chandelier of the Radiant Hart, Trophy of the
+  Radiant Hart, Ward of Demira). Plus new gatherables: Radiant Hart Antlers, Blessed
+  Sevenfold, Hemp Fiber, Pumice, Sugarcane and several herbs, flowers and foods.
+- **Upstream de-duplicated its prop ids**: 119 `item_prop_*` market aliases were retired
+  in favour of the canonical `building_prop_*` ids they duplicated. Every one of those
+  items still exists, still has the same name, and is still craftable under its
+  canonical id — this removes a duplicate catalogue entry, it does not remove an item.
+  None of the retired ids was craftable, so no plan changes shape.
+  *Known cosmetic effect:* a saved list that targeted one of the retired alias ids shows
+  the raw id (e.g. `item_prop_bear_rug`) instead of "Bear Rug". Such a row was already a
+  non-craftable gather row before this update, so nothing stops working — only the label
+  degrades. Re-adding the item from search picks up the canonical id.
+- 4 items genuinely left the catalogue: Short Wood Stock, Short Fine Wood Stock,
+  Sandstone, Plain Tunic. None was craftable and none is referenced by any recipe.
+- 22 recipes were rebalanced upstream (building-piece material costs up or down, and the
+  hunting trophies now additionally require the animal's carcass/antlers/horns).
+- One name fix: "Meirothea’s Yule Flame" → "Meirothea's Yule Flame" (curly apostrophe).
+
+### Toolkit
+- Upstream raw schema gained fields we do not consume and is otherwise unchanged — see
+  the verification note below. No pipeline or type changes were needed.
+
+#### Data verification (2026-10-30)
+- **Consumed source fields: unchanged.** Every field `build-dataset.ts` reads (`id`,
+  `name`, `iconPath`, `mainCategoryId`, `categories`, `tier`, `quality`, `maxStackSize`,
+  `skillRequired`, `outputs[].count`, `itemIngredients[].count`) has the same shape and
+  type as the previous fetch. The `quality` and `skillRequired.name` value sets are
+  identical, so the rarity mapping and profession labels still cover everything.
+- **Additively extended upstream**: recipe key-paths went 122 → 146. New and ignored:
+  a whole `outputs[].entity.mount` object (`mountType`, `cargoSlots`, `attributeStats`,
+  `skillScaling`, …), `itemIngredients[].entity.inventorySize`, and
+  `outputs[].entity.spell.costAmountMax`. One field disappeared,
+  `itemIngredients[].entity.entityType`, which the pipeline never read. The market
+  catalogue's own shape is unchanged.
+- **Output shape stable**: `Item`, `ItemRecipes` and `RecipeVariant` are structurally
+  identical to the previous dataset, with one narrowing — no item has a null `iconPath`
+  any more (was 9), which the `string | null` type already allowed.
+- **All normalization rules held unchanged**: the same 2 forced-raw items, 5 dropped
+  refinement recipes, 13 collapsed same-input variants and 11 items with alternative
+  paths as the previous run.
+- **Engine checks**: no dangling ingredient ids, no malformed recipe entries, and all
+  1723 craftable items plan with 0 crashes and 0 warnings. A stale-list simulation over
+  all 123 retired ids produced 0 crashes and 0 warnings. All 1897 referenced icons are
+  present on disk and non-empty. Typecheck clean, 109/109 tests pass.
+
 ## [1.4.0] — 2026-08-23
 
 Capacity, correctness and operations work against the real production shape: an Oracle
