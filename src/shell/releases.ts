@@ -27,6 +27,38 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.5.0",
+    date: "2026-10-30",
+    title: "Saddle up",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "new",
+            text: "Saddles are in. All nine — riding, pack and courser, across every tier — can be added to a list and broken down to the last stud, hide and plank.",
+          },
+          {
+            kind: "new",
+            text: "The rest of the latest game update is in too: the Shepherd’s Hushed Canopy helms, the Ancient Sylvan Staves, and the Radiant Hart decorations — the chandelier, the trophy and the Ward of Demira. New gatherables like Radiant Hart Antlers, Blessed Sevenfold, Hemp Fiber and Pumice come with them.",
+          },
+          {
+            kind: "improved",
+            text: "Building and trophy recipes now match the current costs. Several building pieces changed price, and the hunting trophies now ask for the animal itself — a carcass, antlers or horns — on top of the materials.",
+          },
+          {
+            kind: "fixed",
+            text: "The game stopped listing some decorations twice under two different internal names, so searching for a prop no longer turns up a duplicate that cannot be crafted.",
+          },
+          {
+            kind: "improved",
+            text: "If an old list of yours shows a decoration as a code-like name instead of its proper title, that item was one of those duplicates. Search for it by name and add it again to get the craftable version.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-08-23",
     title: "Faster, and easier to share",
