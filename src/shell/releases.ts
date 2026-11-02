@@ -27,6 +27,30 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.5.1",
+    date: "2026-11-02",
+    title: "Missing pictures restored",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "fixed",
+            text: "126 items were showing a broken picture instead of their icon — among them most of the new plants, herbs, berries and the saddles. The site the pictures come from had moved. They are all back.",
+          },
+        ],
+      },
+      {
+        changes: [
+          {
+            kind: "improved",
+            text: "Behind the scenes: security updates to the libraries the site runs on, and a stray build file is no longer published.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-10-30",
     title: "Saddle up",
