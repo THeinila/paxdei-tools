@@ -5,6 +5,59 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.5.1] — 2026-11-02
+
+### Toolkit
+- Patched the advisories in the production dependency tree (lockfile only, no
+  `package.json` range changes, no majors): `hono` 4.12.27 → 4.13.16,
+  `@hono/node-server` 2.0.6 → 2.1.6, `react-router(-dom)` 7.18.0 → 7.18.5. The
+  production tree now audits clean. Of the four advisories, only one was reachable
+  here — `serveStatic` double-decoding the request path, which can bypass
+  middleware mounted on a path prefix; impact was low because `securityHeaders`
+  and `visitorTracking` are mounted on `"*"` and the API routes are registered
+  before `serveStatic`. The others cover features this app does not use (CORS
+  middleware, `parseBody`, `hono/jsx`, the proxy helper, language middleware,
+  `toSSG`, WebSockets), and the react-router one is RSC-mode CSRF while this is a
+  plain client-side SPA with no server actions.
+- Six advisories remain in the vitest / vite-node dev toolchain
+  (`@vitest/mocker`, the esbuild dev-server issue, `tinypool`). They are
+  devDependencies, pruned by `npm prune --omit=dev` before the service starts, and
+  clearing them requires a vitest 2 → 4 major upgrade — deliberately left for its
+  own change.
+
+### Crafting Planner 1.5.1
+- **Fixed: 126 item icons were broken.** The icon CDN host moved. `ICON_BASE`
+  still pointed at `gtcdn.info`, which now answers every icon path with a 404
+  whose body is the 6-byte string `Error` (verified against 10 sampled paths: all
+  404 there, all 200 on `cdn-hosted.gaming.tools`). Because `fetch:icons` ran
+  `curl` without `--fail` and then tested only for the file's *existence*, those
+  404 bodies were saved as `.webp` files and counted as successful downloads — so
+  the affected items served a 6-byte "image" with a 200 and showed as broken
+  rather than falling back to the placeholder. Accumulated silently since the host
+  changed: 58 files dated 2026-06-28, 26 dated 2026-07-07 and 42 from the v1.5.0
+  refresh. All 126 are now re-downloaded and valid.
+- The pipeline now fails loudly instead: `curl --fail` never writes an error body,
+  every downloaded file is checked for the WebP `RIFF`/`WEBP` magic, anything
+  invalid is deleted so the app's placeholder takes over, and pre-existing corrupt
+  files are discarded and re-fetched on every run. That last part matters on the
+  host, which seeds each release from a shared icon cache — without it a bad file
+  would be republished forever.
+- Fixed a build artifact being published: `fetch:icons` wrote its curl config to
+  `public/icons/_curl.cfg`, which the build copied into `dist/icons/` and the
+  server served publicly — it listed absolute build paths (on the host,
+  `/opt/pax-planner/releases/<stamp>/...`). It is now written to a temp directory
+  and deleted after use, and a stale copy is cleaned from the icon directory.
+
+#### Verification (2026-11-02)
+- 1897/1897 referenced icons present and valid WebP; 0 missing, 0 invalid, no
+  non-WebP files left in `public/icons/`.
+- Typecheck clean, 109/109 tests pass, `better-sqlite3` loads and runs.
+- Built artifact serves correctly: `/healthz`, CSP header on every response,
+  `no-cache` on `index.html` and deep links, `immutable` on `/assets/*`, and the
+  dataset chunk hash is unchanged from 1.5.0 so cached copies stay valid.
+- Encoded-path probes (`..%2f`, `%2e%2e`, `..%5c`, `/api%2flists`) return the SPA
+  fallback, never a file outside `dist/`, and keep their security headers.
+
 ## [1.5.0] — 2026-10-30
 
 ### Crafting Planner 1.5.0
