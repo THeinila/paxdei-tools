@@ -1,6 +1,6 @@
 # Architecture
 
-Updated: 2026-11-03 · Toolkit 1.5.1 · Crafting Planner 1.5.1
+Updated: 2026-11-03 · Toolkit 1.5.2 · Crafting Planner 1.5.2
 
 The one page to read first. It describes what *is*. Decisions are in [docs/adr/](adr/),
 feature behaviour is in `docs/features/<slug>/spec.md`, and the capacity arithmetic is in
@@ -76,11 +76,12 @@ In development, Vite serves the SPA on 5173 and proxies `/api` to the server on 
 | `src/tools/planner/components/` | Search, PlanView, Row, RecipeTooltip | `PlanView.tsx` |
 | `src/tools/planner/Planner.tsx`, `PlannerHome.tsx` | The list editor at `/planner/:listId`, and the directory at `/planner` | `Planner.tsx` |
 | `shared/listTypes.ts` | Wire types shared by client and server, and `LIST_TTL_DAYS` | whole file |
-| `server/index.ts` | Middleware order, rate-limit budgets, cache policy, SPA fallback, `/healthz`, boot | top to bottom |
+| `server/app.ts` | `createApp()`: middleware order, rate-limit budgets, cache policy, the `/api` 404, SPA fallback, `/healthz` | top to bottom |
+| `server/index.ts` | Boot: opens the database, starts the sweep, listens on `listenAddress()` | whole file |
 | `server/lists.ts` | List and progress routes, `sanitizeState` bounds, the two concurrency strategies | `createListsRouter` |
 | `server/db.ts` | Schema, pragmas, migrations | `migrate()` |
 | `server/{retention,metrics,rateLimit,diskGuard,securityHeaders}.ts` | One cross-cutting concern each (see §4) | each file's header comment |
-| `scripts/` | Data pipeline (`fetch-raw`, `build-dataset`, `fetch-icons`) and `build-server.mjs` | [scripts/README.md](../scripts/README.md) |
+| `scripts/` | Data pipeline: the rules in `datasetRules.ts` and `iconPlan.ts`, wired up by `fetch-raw`, `build-dataset` and `fetch-icons`; `check-dataset.ts`; `build-server.mjs` | [scripts/README.md](../scripts/README.md) |
 | `deploy/` | Runbook, `deploy.sh`, `backup.sh`, `disk-alert.sh`, Caddyfile, systemd unit | [deploy/DEPLOY.md](../deploy/DEPLOY.md) |
 | `data/dataset.json` | Generated items and recipes. Never hand-edit it. | — |
 
@@ -112,7 +113,7 @@ The one secret-protected route is `GET /api/stats`, which needs a bearer `STATS_
 returns 404 when it isn't set.
 
 ### Abuse limits
-The middleware order is in `server/index.ts`:
+The middleware order is in `createApp()` (`server/app.ts`):
 1. security headers;
 2. visitor tracking;
 3. a 64 KB body limit on `/api/*`;
@@ -166,12 +167,15 @@ secrets. The toolkit version is inlined at build time as `__APP_VERSION__`.
 - Server routes are tested through `app.request()` against an in-memory database. There's
   no listening port.
 - Every test that proves an AC cites it in its name (`PLAN-3: …`). `npm run test:report` and
-  `trace.mjs` check that each AC has a passing test. During adoption, backfilled tests
-  need mutation-red evidence ([CLAUDE.md](../CLAUDE.md),
+  `trace.mjs` check that each AC has a passing test; all 188 do. Tests for behaviour that
+  already existed carry mutation-red evidence in their commits ([CLAUDE.md](../CLAUDE.md),
   [factory-adoption-plan.md](factory-adoption-plan.md)).
-- Today the tests cover the engine, `directory`, `prefs`, `progressMerge`, and the server's
-  lists, retention, metrics, disk guard and security headers, plus one shell component.
-  There are no e2e tests.
+- Client tests run against `src/tools/planner/lib/testServer.ts`, a fake `/api/lists` that
+  replaces `fetch` and follows the server's delta and version rules. Component tests swap
+  the dataset for the engine's fixture (`datasetModule()`).
+- `src/bundle.test.ts` builds the app twice (about 5 s) to check the bundle properties in
+  ADR 0004. `npm run check:dataset` checks a pipeline refactor against the real cache.
+- There are no e2e browser tests.
 
 ## 5. Decisions
 
@@ -235,8 +239,7 @@ typecheck run locally and through autocheck.
 | `visitors` table grows without bound | One row per unique IP, forever. It's indexed, but nothing prunes it. |
 | No way to revoke a token | A leaked link gives permanent write access to that list until it's swept. |
 | `LIST_TTL_DAYS` lives in two places | If the env var and the constant in `shared/listTypes.ts` disagree, the UI misstates the retention window. |
-| Untested modules | The React components, `useList`, `rateLimit`, the routing and caching in `server/index.ts`, and the data pipeline have no tests (adoption Phase 5). |
 | The bundled server isn't what tests run | Tests and dev use `tsx` on the sources; only `npm run build` exercises the esbuild bundle. |
 | Upstream data format | The pipeline depends on gaming.tools' devalue file and on a curl User-Agent workaround; a change upstream breaks `npm run data`. |
+| A slow test in every run | `src/bundle.test.ts` runs two production builds (~5 s) on every `npm test`, including autocheck's. |
 | Cache headers depend on @hono/node-server's `Response` | `serveStatic` calls `onFound`, which sets `Cache-Control`, after it has built the response. The header only survives because `serve()` swaps in node-server's lightweight `Response`, which reads headers late. If `overrideGlobalObjects` were turned off, or the library changed this order, every static file would silently lose its cache policy. `server/app.test.ts` runs on the same globals, so it would catch it. |
-| Stale docs | The README still describes local lists and a two-mode `useList` (removed in 1.2.0), and calls the backend optional. A comment in the Caddyfile says the bundle inlines the dataset (no longer true since 1.4.0). Both get fixed in adoption Phase 6. |
