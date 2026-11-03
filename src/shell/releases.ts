@@ -27,6 +27,50 @@ export interface Release {
 /** Newest release first. */
 export const releases: Release[] = [
   {
+    version: "1.5.2",
+    date: "2026-11-03",
+    title: "Smaller rough edges smoothed",
+    sections: [
+      {
+        tool: "Crafting Planner",
+        changes: [
+          {
+            kind: "fixed",
+            text: "Opening a list that no longer exists now tells you so, and offers to remove it from your lists, instead of showing an empty list that can't be saved.",
+          },
+          {
+            kind: "fixed",
+            text: "If you close the name prompt, the amount you entered is still saved, and the prompt doesn't keep coming back while you type.",
+          },
+          {
+            kind: "improved",
+            text: "Clearing a shared list asks first, since it clears it for everyone.",
+          },
+          {
+            kind: "improved",
+            text: "Copying a link or the Markdown checklist now says when the copy failed.",
+          },
+          {
+            kind: "improved",
+            text: "Search results show readable categories, like \"Building pieces\".",
+          },
+          {
+            kind: "improved",
+            text: "The plan summary's tier count goes down as you finish tiers.",
+          },
+          {
+            kind: "fixed",
+            text: "Amounts you have are always whole numbers, and renaming a list survives someone else editing it at the same time.",
+          },
+          {
+            kind: "improved",
+            text: "On your list page, \"delete\" is now \"remove\": it removes the list from your page, and your group's link keeps working.",
+          },
+        ],
+      },
+    ],
+  },
+  {
     version: "1.5.1",
     date: "2026-11-02",
     title: "Missing pictures restored",
