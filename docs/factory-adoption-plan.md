@@ -226,8 +226,8 @@ has the most tests to anchor it.
   clauses against its tests, and add tests for any clause that's missing.
 
 ### Phase 5b: Discrepancy tests and fixes
-The 11 ACs where the spec and the code disagree are PLAN-10, OWN-8, MDX-10, SRCH-4, SHR-5,
-SHR-8, LST-6, LST-9, PRG-7, EDT-9 and SRV-5. Each one is listed under its spec's
+The 12 ACs where the spec and the code disagree are PLAN-10, OWN-8, MDX-10, SRCH-4, SHR-5,
+SHR-8, LST-6, LST-9, PRG-7, EDT-9, SRV-5 and SRV-10 (found in Phase 5). Each one is listed under its spec's
 "Discrepancies with the code".
 - For each one, write the test first, citing the AC. It must fail against today's code for
   the reason the discrepancy describes. This is a real red, not a mutation red.

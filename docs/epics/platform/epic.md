@@ -74,3 +74,4 @@ None. All four specs were approved on 2026-11-03.
 | AC | Spec says | Code does |
 |---|---|---|
 | [SRV-5](../../features/serving/spec.md) | An unknown `/api/*` path returns a JSON 404 | `GET` falls through to the SPA fallback and returns `index.html` with 200 |
+| [SRV-10](../../features/serving/spec.md) | /healthz gives 503 "db unavailable" to every client when the database is down | The day's first probe from each address gets 500 (found in Phase 5) |

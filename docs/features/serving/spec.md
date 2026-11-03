@@ -1,5 +1,5 @@
 # Serving
-Key: SRV · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: SRV · Status: Draft · Owner: — · Updated: 2026-11-03
 
 ## Story
 As the operator, I want the SPA and the API served from one process with correct caching and
@@ -73,6 +73,12 @@ Given a request to `/api/*` with a body larger than 64 KB,
 When it arrives,
 Then it is rejected with 413, and nothing is stored.
 
+### SRV-10: /healthz reports a database failure the same way to every client
+Given the database stops answering,
+When any client requests `GET /healthz`, including one not yet counted as a visitor today,
+Then the response is 503 "db unavailable". Usage counting never turns a health check into a
+different status or body.
+
 ## Non-functional requirements
 
 ### SRV-N1: The server listens on loopback by default
@@ -89,6 +95,10 @@ None. SRV-2 was settled on 2026-11-03: icons get 30 days rather than `immutable`
 artwork replaced under the same name reaches users within a month.
 
 ## Discrepancies with the code
+- SRV-10: visitor tracking runs before `/healthz` and writes to the database the first time a
+  client is seen each day. With the database down, that write throws, so the day's first
+  probe from each address gets 500 "Internal Server Error" instead of 503
+  "db unavailable". Found while testing SRV-6. Fix pending.
 - SRV-5: an unknown `GET /api/...` falls through to the SPA fallback and returns
   `index.html` with 200 when `dist/` exists. Without `dist/`, Hono's default plain-text 404 is
   returned. Fix pending.
@@ -97,3 +107,4 @@ artwork replaced under the same name reaches users within a month.
 - 2026-11-03 — created (backfilled from the code and `securityHeaders.test.ts`)
 - 2026-11-03 — SRV-5 specifies a JSON 404 for unknown API paths (found in the backfill; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — SRV-10 added, from a failure found while testing SRV-6 (the code still differs); back to Draft for re-approval
