@@ -14,6 +14,8 @@ vi.mock("../../../../data/dataset.json", async () => {
   const { datasetModule, item } = await import("../engine/testFixtures.ts");
   return datasetModule((ds) => {
     ds.items.sapwood!.name = "SapWood"; // mixed case: matching must ignore it
+    ds.items.plank = { ...ds.items.plank!, mainCategoryId: "buildingpieces" };
+    ds.items.chair = { ...ds.items.chair!, mainCategoryId: "somethingnew" };
     ds.items.woodcutter = item("woodcutter", true);
     ds.items.ppwood = { ...item("ppwood", true), name: "ppwood extra long name" };
     for (let i = 1; i <= 45; i++) ds.items[`stone_${i}`] = { ...item(`stone_${i}`, true), name: `Stone ${i}` };
@@ -78,6 +80,19 @@ describe("Search", () => {
     render(<Search onAdd={() => {}} />);
     type("stone");
     expect(resultNames()).toHaveLength(40);
+  });
+
+  it("SRCH-4: results show a readable category", () => {
+    render(<Search onAdd={() => {}} />);
+    const category = (q: string, name: string) => {
+      type(q);
+      const row = [...document.querySelectorAll(".search-row")].find((r) => r.querySelector(".search-name")!.textContent === name)!;
+      return row.querySelector(".search-cat")!.textContent;
+    };
+    expect(category("plank", "plank")).toBe("Building pieces");
+    expect(category("wood", "wood")).toBe("Raw material");
+    expect(category("table", "table")).toBe("Item"); // craftable, no category
+    expect(category("chair", "chair")).toBe("Somethingnew"); // an ID with no label yet
   });
 
   it("SRCH-5: each result's quantity starts at 1 and never goes below it", () => {

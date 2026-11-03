@@ -89,12 +89,9 @@ Then the catalogue chunk isn't requested. It is requested only when a planner ro
 None. SRCH-6 was settled on 2026-11-03: the query and the dropdown stay open after an add,
 so that several related items can be added in a row.
 
-## Discrepancies with the code
-- SRCH-4: `Search.tsx` shows `mainCategoryId` as is ("buildingpieces", "materials"), shows
-  "raw material" in lower case, and shows nothing for items without a category. Fix pending.
-  It needs a label table for the 13 category IDs in the dataset.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code; no existing tests)
 - 2026-11-03 — SRCH-4 now requires readable category labels (settled as-built question; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — SRCH-4 fixed in the code (Phase 5b); discrepancy closed
