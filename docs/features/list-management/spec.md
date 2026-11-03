@@ -102,12 +102,10 @@ None.
 ## Open questions
 None.
 
-## Discrepancies with the code
-- LST-9: the card's button is labelled "delete", which suggests the shared list is deleted.
-  The confirmation already says "Remove". Fix pending.
-- LST-6: `renameEntry` rebases only once on a 409, not up to 3 times. Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `directory.test.ts`)
 - 2026-11-03 — LST-9 renames the button to "remove", and LST-6 aligns the rename retries with EDT-3 (settled as-built questions; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — LST-9 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — LST-6 fixed in the code (Phase 5b); discrepancy closed

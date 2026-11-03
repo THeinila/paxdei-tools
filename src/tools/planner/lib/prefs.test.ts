@@ -89,7 +89,7 @@ describe("writePrefs", () => {
 });
 
 describe("clearPrefs", () => {
-  it("forgets one list and leaves the others", () => {
+  it("LST-9: forgets one list and leaves the others", () => {
     writePrefs("a", { preset: "flat" });
     writePrefs("b", { preset: "profession" });
     clearPrefs("a");

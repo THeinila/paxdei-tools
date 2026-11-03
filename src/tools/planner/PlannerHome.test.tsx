@@ -181,6 +181,54 @@ describe("list directory", () => {
     expect(cardNames()).toEqual(["First", "Second"]);
   });
 
+  it("LST-9: remove takes a list out of this browser only, after confirming", async () => {
+    const token = "tok_a".padEnd(22, "0");
+    seedDirectory([entry("a", { name: "Kit" }), entry("b", { name: "Other", archivedAt: ago(0) })]);
+    server.seed(token, { name: "Kit" });
+    localStorage.setItem("paxdei-planner:prefs:v1", JSON.stringify({ [token]: { preset: "flat", hideCompleted: false, collapsed: [] } }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    await openDirectory();
+    expect(within(cardFor("Kit") as HTMLElement).queryByRole("button", { name: "delete" })).toBeNull();
+
+    fireEvent.click(within(cardFor("Kit") as HTMLElement).getByRole("button", { name: "remove" }));
+    expect(confirm).toHaveBeenLastCalledWith('Remove "Kit" from your lists?');
+    expect(cardNames()).toEqual(["Kit"]); // cancelled
+
+    fireEvent.click(within(cardFor("Kit") as HTMLElement).getByRole("button", { name: "remove" }));
+    expect(cardNames()).toEqual([]);
+    expect(JSON.parse(localStorage.getItem("paxdei-planner:prefs:v1")!)).toEqual({});
+    expect(server.list(token).state.name).toBe("Kit"); // the shared list is untouched
+
+    fireEvent.click(screen.getByRole("button", { name: "Show archived (1)" }));
+    const archived = document.querySelector(".list-card.archived") as HTMLElement;
+    expect(within(archived).getByRole("button", { name: "remove" })).toBeTruthy();
+  });
+
+  it("LST-6: a card rename survives up to two concurrent edits, retrying 3 times", async () => {
+    const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
+    const token = "tok_a".padEnd(22, "0");
+    seedDirectory([entry("a", { name: "Kit" })]);
+    server.seed(token, { name: "Kit" });
+    await openDirectory();
+    const rename = async (to: string) => {
+      fireEvent.click(within(cards()[0] as HTMLElement).getByRole("button", { name: "rename" }));
+      const field = document.querySelector(".list-card-rename") as HTMLInputElement;
+      fireEvent.change(field, { target: { value: to } });
+      fireEvent.keyDown(field, { key: "Enter" });
+      await settle();
+    };
+    server.conflictNext(2);
+    await rename("Kit 2");
+    expect(server.countOf("PATCH")).toBe(3);
+    expect(server.list(token).state.name).toBe("Kit 2");
+    expect(alert).not.toHaveBeenCalled();
+
+    server.conflictNext(3);
+    await rename("Kit 3");
+    expect(server.countOf("PATCH")).toBe(6);
+    expect(alert).toHaveBeenLastCalledWith(expect.stringMatching(/^Could not rename the list: /));
+  });
+
   it("LST-10: failed directory actions say what failed", async () => {
     const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
     seedDirectory([entry("a", { name: "Kit" })]);

@@ -103,21 +103,26 @@ export function updateEntry(id: string, patch: Partial<Omit<ListEntry, "id">>): 
   return next;
 }
 
+/** Attempts at saving a directory rename over concurrent edits, matching the
+ * editor's own rebase budget (EDT-3, LST-6). */
+const MAX_RENAME_ATTEMPTS = 3;
+
 /** Rename a list from the directory. Updates the local card label immediately,
  * then — for a shared list — pushes the new name into the server definition with
- * a version-guarded PATCH (rebasing once on a concurrent edit). A not-yet-migrated
- * legacy local list has no server copy yet; it adopts its name on promotion. */
+ * a version-guarded PATCH, rebasing on a concurrent edit up to
+ * MAX_RENAME_ATTEMPTS times in total. A not-yet-migrated legacy local list has
+ * no server copy yet; it adopts its name on promotion. */
 export async function renameEntry(entry: ListEntry, name: string): Promise<void> {
   updateEntry(entry.id, { name });
   if (!entry.shareToken) return;
-  try {
-    const snap = await getList(entry.shareToken);
-    await patchList(entry.shareToken, { ...snap.state, name }, snap.version);
-  } catch (e) {
-    if (e instanceof VersionConflict) {
-      await patchList(entry.shareToken, { ...e.current.state, name }, e.current.version);
-    } else {
-      throw e;
+  let base = await getList(entry.shareToken);
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await patchList(entry.shareToken, { ...base.state, name }, base.version);
+      return;
+    } catch (e) {
+      if (!(e instanceof VersionConflict) || attempt >= MAX_RENAME_ATTEMPTS) throw e;
+      base = e.current;
     }
   }
 }

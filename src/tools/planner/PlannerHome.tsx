@@ -145,9 +145,9 @@ export default function PlannerHome() {
     refresh();
   }
 
-  function onDelete(entry: ListEntry) {
+  function onRemove(entry: ListEntry) {
     // Removing only drops the list from this browser's directory; the shared list
-    // itself lives on until everyone forgets its link.
+    // itself lives on until everyone forgets its link. Hence "remove", not "delete".
     if (!window.confirm(`Remove "${entry.name || DEFAULT_NAME}" from your lists?`)) return;
     deleteEntry(entry.id);
     refresh();
@@ -210,8 +210,8 @@ export default function PlannerHome() {
                 <button className="link-btn" onClick={() => onArchive(entry, true)}>
                   archive
                 </button>
-                <button className="link-btn" onClick={() => onDelete(entry)}>
-                  delete
+                <button className="link-btn" onClick={() => onRemove(entry)}>
+                  remove
                 </button>
               </div>
             </div>
@@ -242,8 +242,8 @@ export default function PlannerHome() {
                     <button className="link-btn" onClick={() => onArchive(entry, false)}>
                       unarchive
                     </button>
-                    <button className="link-btn" onClick={() => onDelete(entry)}>
-                      delete
+                    <button className="link-btn" onClick={() => onRemove(entry)}>
+                      remove
                     </button>
                   </div>
                 </div>
