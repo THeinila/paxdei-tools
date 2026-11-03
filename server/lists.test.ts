@@ -211,3 +211,23 @@ describe("request validation and bounds", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("partial-coverage additions", () => {
+  it("SHR-2: seeded progress is attributed to the creator, and bad amounts are left out", async () => {
+    const { progress } = (await createList({}, {
+      owned: { wood: 3, neg: -2, text: "lots", frac: 2.6 },
+      handle: "Alice",
+    })) as unknown as { progress: { itemId: string; qty: number; byHandle: string | null }[] };
+    expect(progress).toEqual([
+      expect.objectContaining({ itemId: "frac", qty: 2, byHandle: "Alice" }),
+      expect.objectContaining({ itemId: "wood", qty: 3, byHandle: "Alice" }),
+    ]);
+  });
+
+  it("PRG-3: a rejected progress write stores nothing", async () => {
+    const { token } = await createList({});
+    await app.request(`/lists/${token}/progress`, json({ itemId: "iron", delta: "lots" }));
+    const body = (await (await app.request(`/lists/${token}`)).json()) as { progress: unknown[] };
+    expect(body.progress).toEqual([]);
+  });
+});

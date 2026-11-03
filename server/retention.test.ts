@@ -281,3 +281,17 @@ describe("startRetention", () => {
     expect(plan.map((r) => r.detail).join(" ")).toMatch(/USING (COVERING )?INDEX idx_lists_last_activity/);
   });
 });
+
+describe("migration safety net", () => {
+  it("RET-8: no list is left without an activity time", () => {
+    db.prepare(
+      `INSERT INTO lists (share_token, version, state, created_at, updated_at, last_activity_at)
+       VALUES ('nullclock', 0, '{}', '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z', NULL)`,
+    ).run();
+    migrate(db);
+    const row = db.prepare(`SELECT last_activity_at FROM lists WHERE share_token = 'nullclock'`).get() as {
+      last_activity_at: string | null;
+    };
+    expect(row.last_activity_at).toBe("2026-01-02T00:00:00.000Z");
+  });
+});
