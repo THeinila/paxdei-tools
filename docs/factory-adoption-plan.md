@@ -88,8 +88,8 @@ are existing tests that will be renamed to cite the AC.
 | | ready-and-stacks | RDY | `computeReady`, `stacksFor` | 8 |
 | | markdown-export | MDX | `markdown.ts`, copy button | 6 |
 | | recipe-tooltip | TIP | `RecipeTooltip.tsx`, gather "where?" link | 0 |
-| | list-management | LST | `directory.ts`, named, duplicate, archive, quick list | 5 |
 | **collaboration** | share-link | SHR | `POST/GET /api/lists`, Share button, `?list=` hydrate | 5 |
+| | list-management | LST | `directory.ts`, named, duplicate, archive, quick list | 5 |
 | | shared-progress | PRG | deltas, `progressMerge`, polling, handle, attribution | 13 |
 | | definition-edits | EDT | version-guarded PATCH, 409 + rebase | 2 |
 | | list-retention | RET | `retention.ts` TTL sweep, activity clock, migration | 15 |
@@ -99,7 +99,11 @@ are existing tests that will be renamed to cite the AC.
 | | usage-metrics | MET | `metrics.ts`, `/api/stats` | 8 |
 | **data** | game-data-pipeline | DAT | `build-dataset.ts` rules, `fetch-icons.ts` validation | 0 |
 
-Expected size is about 110–140 ACs, and about 60–90 new tests. CAPACITY.md constants
+Phase 2 moved list-management from planner to collaboration. It creates lists through the
+share endpoint, so leaving it in planner made the two epics depend on each other. The
+epics hold 103 draft ACs for these 18 features.
+
+Expected size was about 110–140 ACs, and about 60–90 new tests. CAPACITY.md constants
 (rate limits, poll interval, chunk sizes) become `-N` NFRs in SRV, ABU and PRG, and each
 cites the CAPACITY.md section that justifies it.
 
