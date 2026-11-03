@@ -1,5 +1,5 @@
 # Serving
-Key: SRV · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: SRV · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As the operator, I want the SPA and the API served from one process with correct caching and
@@ -108,3 +108,4 @@ artwork replaced under the same name reaches users within a month.
 - 2026-11-03 — SRV-5 specifies a JSON 404 for unknown API paths (found in the backfill; the code still differs)
 - 2026-11-03 — approved
 - 2026-11-03 — SRV-10 added, from a failure found while testing SRV-6 (the code still differs); back to Draft for re-approval
+- 2026-11-03 — re-approved with SRV-10

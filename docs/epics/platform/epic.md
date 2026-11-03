@@ -65,7 +65,7 @@ Draft ACs:
 
 ## Open questions
 None. All four specs were approved on 2026-11-03. Serving went back to Draft on 2026-11-03
-when SRV-10 was added during Phase 5, and needs re-approval.
+when SRV-10 was added during Phase 5, and was re-approved the same day.
 - Kept as they are, with the reasoning in each spec: in-memory rate-limit budgets (ABU),
   the unpruned `visitors` table (MET), 30-day icon caching (SRV-2), and redirecting unknown
   paths home (SHL-6).
