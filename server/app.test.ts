@@ -175,3 +175,48 @@ describe("bind address", () => {
     expect(listenAddress({ HOST: "0.0.0.0", PORT: "9000" })).toEqual({ hostname: "0.0.0.0", port: 9000 });
   });
 });
+
+describe("headers and guards on the assembled app", () => {
+  it("SRV-7: assets, API errors, 413s and 429s all carry the security headers", async () => {
+    const app = appWith();
+    const responses = [
+      await app.request("/assets/index-abc123.js"),
+      await app.request("/api/lists/nope"),
+      await app.request("/api/lists", {
+        method: "POST",
+        headers: { "content-type": "application/json", "content-length": String(70 * 1024) },
+        body: "x".repeat(70 * 1024),
+      }),
+    ];
+    for (let i = 0; i < 241; i++) await app.request("/api/lists/nope", from("10.9.9.9"));
+    responses.push(await app.request("/api/lists/nope", from("10.9.9.9")));
+    expect(responses.map((r) => r.status)).toEqual([200, 404, 413, 429]);
+    for (const r of responses) {
+      expect(r.headers.get("content-security-policy")).toMatch(/default-src 'self'/);
+      expect(r.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(r.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+      expect(r.headers.get("x-frame-options")).toBe("DENY");
+    }
+  });
+
+  it("ABU-7: with the disk low, existing lists can still be read, edited and ticked off", async () => {
+    const seeded = await appWith().request("/api/lists", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ state: { name: "keep" } }),
+    });
+    const { token } = (await seeded.json()) as { token: string };
+    const g = guard(Number.MAX_SAFE_INTEGER);
+    await g.refresh();
+    const low = createApp({ db, diskGuard: g, distDir: dist });
+    const json = (method: string, body: unknown): RequestInit => ({
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect((await low.request("/api/lists", json("POST", {}))).status).toBe(503);
+    expect((await low.request(`/api/lists/${token}`)).status).toBe(200);
+    expect((await low.request(`/api/lists/${token}`, json("PATCH", { state: { name: "x" }, baseVersion: 0 }))).status).toBe(200);
+    expect((await low.request(`/api/lists/${token}/progress`, json("POST", { itemId: "wood", delta: 1 }))).status).toBe(200);
+  });
+});

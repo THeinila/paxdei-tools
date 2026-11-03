@@ -27,4 +27,14 @@ describe("disk guard logging", () => {
     expect(log).toHaveBeenCalledTimes(2);
     expect(log.mock.calls[1]![0]).toMatch(/space recovered/);
   });
+
+  it("ABU-8: a failed measurement is logged and treated as not low", async () => {
+    const { statfs } = await import("node:fs/promises");
+    vi.mocked(statfs).mockRejectedValue(new Error("EACCES"));
+    const log = vi.fn();
+    const guard = createDiskGuard({ path: "/data/db.sqlite", minFreeBytes: 100, log });
+    const s = await guard.refresh();
+    expect(s.low).toBe(false);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("check failed: EACCES"));
+  });
 });
