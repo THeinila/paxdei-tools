@@ -86,7 +86,14 @@ describe("buildPlanView presets", () => {
     expect(idsIn(buildPlanView(p, fixture().items, prefs()), "gather")).toEqual(["iron_ore", "wood"]);
   });
 
-  it("reports the same tier count whatever the grouping", () => {
+  it("PLAN-10: tiers only count unfinished crafts", () => {
+    const vm = (owned: Record<string, number>) => buildPlanView(tablePlan(owned), fixture().items, prefs());
+    expect(vm({}).totals.tierCount).toBe(2);
+    expect(vm({ plank: 4, nail: 10 }).totals.tierCount).toBe(1); // only the table is left
+    expect(vm({ table: 1 }).totals.tierCount).toBe(0);
+  });
+
+  it("PLAN-10: reports the same tier count whatever the grouping", () => {
     const p = tablePlan();
     const counts = PRESETS.map(
       (preset: PresetId) => buildPlanView(p, fixture().items, prefs({ preset })).totals.tierCount,

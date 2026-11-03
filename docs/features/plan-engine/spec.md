@@ -93,11 +93,9 @@ None. The engine runs in the client ([ADR 0002](../../adr/0002-run-the-recipe-en
 ## Open questions
 None.
 
-## Discrepancies with the code
-- PLAN-10: `buildPlanView` counts the tiers of every craft step, including satisfied ones, so
-  the tier count doesn't drop as work is done and disagrees with c. Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
 - 2026-11-03 — PLAN-10 now counts only tiers with unfinished crafts (settled as-built question; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — PLAN-10 fixed in the code (Phase 5b); discrepancy closed

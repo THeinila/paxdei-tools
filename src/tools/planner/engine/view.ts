@@ -81,8 +81,9 @@ export interface PlanViewModel {
     craftsLeft: number;
     /** Sum of CraftStep.crafts — how many times a bench is used in total. */
     totalCrafts: number;
-    /** Distinct dependency tiers. Preset-independent: the summary must read the
-     * same however the rows happen to be grouped. */
+    /** Distinct dependency tiers among the crafts still to do, so the count
+     * shrinks as work is finished (PLAN-10). Preset-independent: the summary
+     * must read the same however the rows happen to be grouped. */
     tierCount: number;
     readyNow: number;
     hiddenCount: number;
@@ -279,7 +280,7 @@ export function buildPlanView(
       gatherLeft: plan.gather.filter((g) => !g.satisfied).length,
       craftsLeft: plan.crafts.filter((c) => !c.satisfied).length,
       totalCrafts: plan.crafts.reduce((n, c) => n + c.crafts, 0),
-      tierCount: new Set(plan.crafts.map((c) => c.tier)).size,
+      tierCount: new Set(plan.crafts.filter((c) => !c.satisfied).map((c) => c.tier)).size,
       readyNow: ready.size,
       hiddenCount,
     },
