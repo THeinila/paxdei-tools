@@ -4,7 +4,7 @@ import { useState } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { plan, type Target } from "../engine/planner.ts";
 import { DEFAULT_PREFS, type ViewPrefs } from "../engine/view.ts";
-import { loadDataset } from "../lib/data.ts";
+import { loadDataset, sourceUrl } from "../lib/data.ts";
 import { PlanView } from "./PlanView.tsx";
 
 // The planner reads the dataset through lib/data.ts; swap the generated catalogue
@@ -123,6 +123,18 @@ describe("PlanView", () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.queryByText("iron_ore")).toBeTruthy();
+  });
+
+  it("TIP-8: gather rows link to their gaming.tools page in a new tab, without a referrer", () => {
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} />);
+    const link = within(rowFor("wood")).getByRole("link", { name: "where?" }) as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe("https://paxdei.gaming.tools/items/wood"); // no category → "items"
+    expect(link.target).toBe("_blank");
+    expect(link.rel).toBe("noreferrer");
+    expect(sourceUrl({ ...ds.items.wood!, mainCategoryId: "materials" })).toBe(
+      "https://paxdei.gaming.tools/materials/wood",
+    );
+    expect(within(rowFor("plank")).queryByRole("link", { name: "where?" })).toBeNull();
   });
 
   it("MDX-9: the copy button confirms for 2 seconds", async () => {
