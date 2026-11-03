@@ -218,7 +218,10 @@ describe("migration", () => {
 });
 
 describe("startRetention", () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks(); // the RET-N1 setInterval spy, even when its test fails
+  });
 
   it("RET-5: sweeps at start, then every 24 hours", () => {
     vi.useFakeTimers();
@@ -271,7 +274,6 @@ describe("startRetention", () => {
     startRetention(db, { ttlDays: 90, log: () => {} });
     expect(spy).toHaveBeenCalledWith(expect.any(Function), 24 * 60 * 60 * 1000);
     expect(unref).toHaveBeenCalled();
-    spy.mockRestore();
   });
 
   it("RET-N1: the sweep's activity column is indexed", () => {

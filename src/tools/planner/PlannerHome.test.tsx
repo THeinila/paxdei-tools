@@ -187,7 +187,7 @@ describe("list directory", () => {
     server.seed("tok_a".padEnd(22, "0"), { name: "Kit" });
     await openDirectory();
 
-    server.failNext("POST", 500);
+    server.failNext("POST", 500, "/api/lists");
     fireEvent.click(screen.getByRole("button", { name: "+ Create a new list" }));
     await settle();
     expect(alert).toHaveBeenLastCalledWith("Could not create a list: createList failed: 500");
@@ -197,7 +197,7 @@ describe("list directory", () => {
     await settle();
     expect(alert).toHaveBeenLastCalledWith("Could not load the list to duplicate.");
 
-    server.failNext("POST", 500);
+    server.failNext("POST", 500, "/api/lists");
     fireEvent.click(within(cardFor("Kit") as HTMLElement).getByRole("button", { name: "duplicate" }));
     await settle();
     expect(alert).toHaveBeenLastCalledWith("Could not duplicate the list: createList failed: 500");
@@ -231,7 +231,7 @@ describe("list directory", () => {
 
   it("LST-11: a failed promotion returns to the directory", async () => {
     seedDirectory([{ id: "legacy-2", name: "Old", kind: "local", targetCount: 0, createdAt: ago(0), updatedAt: ago(0) }]);
-    server.failNext("POST", 500);
+    server.failNext("POST", 500, "/api/lists");
     await openDirectory("/planner/legacy-2");
     await settle();
     expect(where()).toBe("/planner");

@@ -212,7 +212,7 @@ describe("request validation and bounds", () => {
   });
 });
 
-describe("partial-coverage additions", () => {
+describe("creation seeding and progress validation", () => {
   it("SHR-2: seeded progress is attributed to the creator, and bad amounts are left out", async () => {
     const { progress } = (await createList({}, {
       owned: { wood: 3, neg: -2, text: "lots", frac: 2.6 },

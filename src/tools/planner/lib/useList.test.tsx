@@ -95,7 +95,7 @@ describe("useList progress", () => {
   it("PRG-13: a failed write is undone and reported", async () => {
     server.seed(TOKEN, {}, { wood: [3, "Bob"] });
     const { result } = await open();
-    server.failNext("POST", 500);
+    server.failNext("POST", 500, "/progress");
     act(() => result.current.setOwned("wood", 9));
     expect(result.current.state.owned.wood).toBe(9);
     await settle();
@@ -107,7 +107,7 @@ describe("useList progress", () => {
   it("PRG-13: a failed first write for an item removes it again", async () => {
     server.seed(TOKEN);
     const { result } = await open();
-    server.failNext("POST", 503);
+    server.failNext("POST", 503, "/progress");
     act(() => result.current.setOwned("wood", 4));
     await settle();
     expect(result.current.progress.wood).toBeUndefined();

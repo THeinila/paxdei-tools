@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadDataset } from "../lib/data.ts";
+import { installFakeServer } from "../lib/testServer.ts";
 import Planner from "../Planner.tsx";
 import PlannerHome from "../PlannerHome.tsx";
 import { Search } from "./Search.tsx";
@@ -28,23 +29,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-/** The list editor for one server list, with the API answered by a stubbed fetch.
- * Returns every PATCH body the editor sent. */
+/** The list editor for one server list, against the shared fake backend.
+ * Returns a function listing every PATCH body the editor has sent so far. */
 function renderEditor() {
-  const token = "AAAAAAAAAAAAAAAAAAAAAA"; // 22 base64url chars, like a real token
-  const patches: { state: { targets: { itemId: string; quantity: number }[] }; baseVersion: number }[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (_url: string, init?: RequestInit) => {
-      const updatedAt = new Date(0).toISOString();
-      if (init?.method === "PATCH") {
-        const body = JSON.parse(String(init.body));
-        patches.push(body);
-        return Response.json({ version: patches.length, state: body.state, progress: [], updatedAt });
-      }
-      return Response.json({ version: 0, state: { name: "L", targets: [], pathChoices: {} }, progress: [], updatedAt });
-    }),
-  );
+  const server = installFakeServer();
+  const token = server.seed("AAAAAAAAAAAAAAAAAAAAAA", { name: "L" }); // 22 base64url chars, like a real token
   render(
     <MemoryRouter initialEntries={[`/planner/${token}`]}>
       <Routes>
@@ -52,7 +41,10 @@ function renderEditor() {
       </Routes>
     </MemoryRouter>,
   );
-  return patches;
+  return () =>
+    server.calls.filter((c) => c.method === "PATCH").map((c) => c.body!) as unknown as {
+      state: { targets: { itemId: string; quantity: number }[] };
+    }[];
 }
 
 const input = () => screen.getByPlaceholderText("Search items to craft…") as HTMLInputElement;
@@ -105,8 +97,8 @@ describe("Search", () => {
     type("plank");
     fireEvent.click(screen.getByRole("button", { name: "Add 1 plank" }));
     fireEvent.click(screen.getByRole("button", { name: "Add 1 plank" }));
-    await waitFor(() => expect(patches).toHaveLength(2));
-    expect(patches[1]!.state.targets).toEqual([{ itemId: "plank", quantity: 2 }]);
+    await waitFor(() => expect(patches()).toHaveLength(2));
+    expect(patches()[1]!.state.targets).toEqual([{ itemId: "plank", quantity: 2 }]);
     expect((document.querySelector(".target-qty") as HTMLInputElement).value).toBe("2");
   });
 

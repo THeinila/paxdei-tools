@@ -38,7 +38,7 @@ export function installFakeServer() {
     holding.some((h) => h.stage === stage && (h.method === "*" || h.method === call.method));
   let nextToken = 0;
   /** Status to answer the next matching request with, instead of handling it. */
-  const failures: { method: string; status: number }[] = [];
+  const failures: { method: string; path?: string; status: number }[] = [];
   /** Responses to answer the next PATCHes with 409, even on a current baseVersion. */
   let forcedConflicts = 0;
 
@@ -50,7 +50,9 @@ export function installFakeServer() {
   });
 
   function handle(call: Call): Response {
-    const fail = failures.findIndex((f) => f.method === call.method);
+    const fail = failures.findIndex(
+      (f) => f.method === call.method && (f.path === undefined || call.path.endsWith(f.path)),
+    );
     if (fail !== -1) {
       const { status } = failures.splice(fail, 1)[0]!;
       return Response.json({ error: "injected" }, { status });
@@ -144,8 +146,10 @@ export function installFakeServer() {
         for (const h of held.splice(0)) h.release();
       } else held.splice(i, 1)[0]!.release();
     },
-    failNext(method: string, status: number) {
-      failures.push({ method, status });
+    /** Fail the next request with this method, and (if given) a path ending in `path`,
+     * e.g. failNext("POST", 500, "/api/lists") for a create, or "/progress". */
+    failNext(method: string, status: number, path?: string) {
+      failures.push({ method, path, status });
     },
     conflictNext(n: number) {
       forcedConflicts = n;

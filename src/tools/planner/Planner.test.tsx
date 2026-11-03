@@ -133,10 +133,11 @@ describe("list editor", () => {
   it("LST-5: renaming the title saves the shared name; blank becomes Untitled", async () => {
     server.seed(TOKEN, { name: "Old" });
     await openEditor();
+    title().focus();
     fireEvent.change(title(), { target: { value: "New name" } });
-    fireEvent.keyDown(title(), { key: "Enter" });
-    fireEvent.blur(title()); // Enter blurs the field; jsdom needs the event sent
+    fireEvent.keyDown(title(), { key: "Enter" }); // Enter confirms by leaving the field
     await settle();
+    expect(document.activeElement).not.toBe(title());
     expect(server.list(TOKEN).state.name).toBe("New name");
 
     fireEvent.change(title(), { target: { value: "   " } });
