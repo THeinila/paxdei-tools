@@ -61,6 +61,7 @@ describe("ItemLabel and its recipe card", () => {
     expect(card()!.querySelector(".rt-variant")).toBeNull();
   });
 
+  // covers: TIP-4 (the trace can't read an it.each title)
   it.each(["touch", "pen"])("TIP-4: with a %s pointer, a tap toggles the card and a tap elsewhere closes it", (pointerType) => {
     render(<p>elsewhere</p>);
     const el = label("plank");
