@@ -46,7 +46,10 @@ async function openApp(path: string, before?: (registry: typeof import("../tools
 const header = () => document.querySelector(".site-header") as HTMLElement;
 const footer = () => document.querySelector(".footer") as HTMLElement;
 
-describe("suite shell", () => {
+// Each test imports a fresh router graph (resetModules), and the first one cold. Under a
+// full parallel run, with src/bundle.test.ts building at the same time, that took over
+// vitest's 5 s default once, and the timed-out test then broke the ones after it.
+describe("suite shell", { timeout: 30_000 }, () => {
   it("SHL-2: the header links home, every tool and What's New, and marks the current page", async () => {
     const { tools } = await import("../tools/registry.tsx");
     await openApp("/whats-new");
