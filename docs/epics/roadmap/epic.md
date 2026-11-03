@@ -44,7 +44,7 @@ Story: As a player, I want to see how current the game data is, so that I can te
 Depends on: —
 Draft ACs:
 - DVER-1: The footer shows the date the dataset was built.
-- DVER-2: The dataset records the date it was built, and a re-run of `npm run data` updates it.
+- DVER-2: The footer's date comes from `meta.generatedAt`, which the dataset already records (DAT-8).
 
 ### 5. mobile-layout · Key: MOB
 Story: As a player on a phone, I want plan rows that read cleanly on a narrow screen, so that I can follow the plan in-game on a second screen.

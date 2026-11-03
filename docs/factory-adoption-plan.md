@@ -193,6 +193,9 @@ has the most tests to anchor it.
 - `(as-built)` questions go in Open questions.
 - **Gate:** the user approves the epic's specs as a batch and settles each `(as-built)`
   question.
+- **Done 2026-11-03.** All 18 specs are Approved, with 172 ACs and 15 NFRs. 11 ACs in 9 specs are
+  discrepancies, to be fixed later: PLAN-10, OWN-8, MDX-10, SRCH-4, SHR-5, SHR-8, LST-6, LST-9,
+  PRG-7, EDT-9, SRV-5.
 
 ### Phase 4: Cite existing tests
 - Rename the 109 existing tests to cite AC IDs. Names change; assertions don't.
@@ -240,7 +243,7 @@ has the most tests to anchor it.
 | Specs that copy the code describe bugs as requirements | `(as-built)` questions, decided at approval |
 | UI ACs drift into implementation detail ("button X calls Y") | spec-rules #5; the critic checks for it |
 | jsdom gaps (clipboard, `window.prompt`, layout for the tooltip) | Mock only at the browser boundary; assert on the tooltip's content and visibility, not its position |
-| Refactoring pipeline scripts for testability changes output | Diff `data/dataset.json` before and after; it must be byte-identical |
+| Refactoring pipeline scripts for testability changes output | Diff `data/dataset.json` before and after on the same cache; it must be identical apart from `meta.generatedAt` (DAT-N1), which changes on every run |
 | Context size over 18 specs | One epic per session; this file and the specs hold the state, not the conversation |
 
 ## 9. Decisions needed before Phase 0

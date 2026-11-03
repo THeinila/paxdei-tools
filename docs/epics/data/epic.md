@@ -10,7 +10,7 @@ fix-ups, and every item in it has a local icon.
 
 **Backfill.** Already built. The pipeline scripts call the network, so tests cover only
 their pure functions (CLAUDE.md). Some of those functions may need extracting from the
-scripts first, as a refactor that leaves `data/dataset.json` byte-identical. The rules are
+scripts first, as a refactor that leaves `data/dataset.json` identical apart from `meta.generatedAt` (DAT-N1). The rules are
 documented in [scripts/README.md](../../../scripts/README.md).
 
 ## Features
@@ -33,5 +33,4 @@ Draft ACs:
 - The upstream download itself (`fetch-raw.ts`, which uses curl because the CDN rejects Node's fetch): not testable without the network.
 
 ## Open questions
-- (as-built) DAT-1: `FORCE_RAW` currently lists only the medium animal hides. Is that list a requirement or just current curation?
-- Extracting the rule functions from `build-dataset.ts` and `fetch-icons.ts` is a refactor in Phase 5. Confirm the byte-identical dataset check is a sufficient guard.
+None. The [spec](../../features/game-data-pipeline/spec.md) was approved on 2026-11-03, with no discrepancies. `FORCE_RAW` is treated as curation (DAT-2). The refactor guard is DAT-N1: the dataset must be identical apart from `meta.generatedAt`, which changes on every run, so a byte-for-byte comparison could never pass.
