@@ -124,18 +124,24 @@ cites the CAPACITY.md section that justifies it.
 Each one records a decision already in the code. They are dated today with
 `Context: backfilled from <source>`.
 
+Written in Phase 1 as `docs/adr/0001`–`0015`. The original 12 candidates, plus three
+the code survey turned up (marked *new*):
+
 1. Split the suite into tools behind one registry (routes and landing cards generated from it).
-2. Lazy-load the dataset as its own hashed chunk (CAPACITY.md).
-3. Commit the generated `dataset.json`, and treat icons as a build artifact.
-4. Share by secret token with no accounts. A handle is attribution, not auth.
-5. Sync by polling (~3 s), not WebSockets.
-6. Hono + better-sqlite3 on a single node.
-7. Two concurrency strategies: additive progress deltas, version-guarded definition edits.
-8. Sweep shared lists after a TTL of write inactivity.
-9. Privacy-preserving metrics: HMAC-hashed IP, no cookies, stats endpoint closed unless a token is set.
-10. Same-origin only. A strict CSP, with inline style allowed for the tooltip.
-11. The disk guard fails open.
-12. Two version tracks (toolkit release train, per-tool).
+2. *New:* run the recipe engine in the client; the server is storage only.
+3. Bundle the game data and serve every asset from our own origin (commit the generated `dataset.json`; icons are a build artifact).
+4. Lazy-load the dataset as its own hashed chunk (CAPACITY.md).
+5. Hono + better-sqlite3 in one process, serving the SPA and the API.
+6. Share by secret token with no accounts. A handle is attribution, not auth.
+7. *New:* every list is server-backed (1.2.0 removed local lists).
+8. Sync by polling (10 s plus jitter since 1.4.0; it was 3 s), not WebSockets.
+9. Two concurrency strategies: additive progress deltas, version-guarded definition edits.
+10. Sweep shared lists after a TTL of write inactivity.
+11. Privacy-preserving metrics: HMAC-hashed IP, no cookies, stats endpoint closed unless a token is set.
+12. Security headers set in the app: a strict same-origin CSP, with inline style allowed for the tooltip.
+13. The disk guard fails open.
+14. *New:* compile the server ahead of time and deploy atomically.
+15. Two version tracks (toolkit release train, per-tool).
 
 ## 6. Phases
 
