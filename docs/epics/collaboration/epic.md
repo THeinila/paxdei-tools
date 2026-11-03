@@ -77,8 +77,16 @@ Draft ACs:
 - Rate limits and the disk guard on list creation: the platform epic (abuse-limits).
 
 ## Open questions
-- (as-built) PRG-4: if the user dismisses the name prompt, their "have" edit is silently dropped. Keep that, or save without a name?
-- (as-built) EDT-4: "Clear" removes targets and path choices but leaves the server's progress rows. Re-adding an item brings back everyone's old "have" amounts. Intended?
-- (as-built) LST-6: the button says "delete" but only removes the list from this browser. Keep the label, or rename it to "remove"?
-- (as-built) PRG-1: deltas aren't idempotent, so a request retried after it had already succeeded counts twice. Acceptable?
-- (as-built) RET-5: the UI shows the shared constant, not the server's configured value. If an operator overrides the env var, the UI is wrong (see [ADR 0010](../../adr/0010-sweep-shared-lists-after-a-ttl-of-write-inactivity.md)).
+None. All five specs were approved on 2026-11-03, and their as-built questions were settled
+in the specs. Keeping have amounts on clear (EDT-10), non-idempotent deltas (PRG) and the
+footer's constant (RET-9) stay as they are. Six behaviours are specified differently from what
+the code does today, and are fixed later:
+
+| AC | Spec says | Code does |
+|---|---|---|
+| [SHR-5](../../features/share-link/spec.md) | A failed "Copy link" shows "Copy failed" | Fails silently |
+| [SHR-8](../../features/share-link/spec.md) | A missing or swept list says it no longer exists, and offers removal | Shows an empty, editable list with "⚠ not found" |
+| [LST-6](../../features/list-management/spec.md) | Directory rename retries a conflict up to 3 times | Retries once |
+| [LST-9](../../features/list-management/spec.md) | The card's button reads "remove" | Reads "delete" |
+| [PRG-7](../../features/shared-progress/spec.md) | Declining the name prompt still saves, unattributed, and doesn't ask again on this page | Drops the write, and asks again on every keystroke |
+| [EDT-9](../../features/definition-edits/spec.md) | "Clear" asks for confirmation | Clears for everyone at once |
