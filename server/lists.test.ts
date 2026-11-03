@@ -198,8 +198,8 @@ describe("request validation and bounds", () => {
 
   it("PRG-2: truncates deltas and caps the stored amount at 10,000,000", async () => {
     const { token } = await createList({});
-    const post = (delta: number) =>
-      app.request(`/lists/${token}/progress`, json({ itemId: "wood", delta })).then((r) => r.json());
+    const post = async (delta: number) =>
+      (await app.request(`/lists/${token}/progress`, json({ itemId: "wood", delta }))).json();
     expect(await post(2.9)).toMatchObject({ qty: 2 });
     expect(await post(-1.9)).toMatchObject({ qty: 1 });
     expect(await post(20_000_000)).toMatchObject({ qty: 10_000_000 });
