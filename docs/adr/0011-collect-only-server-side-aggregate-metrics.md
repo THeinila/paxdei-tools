@@ -1,5 +1,5 @@
 # 0011. Collect only server-side aggregate metrics
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/metrics.ts`, `server/db.ts`, README "Architecture"
 
 ## Context

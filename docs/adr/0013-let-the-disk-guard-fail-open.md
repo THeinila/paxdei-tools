@@ -1,5 +1,5 @@
 # 0013. Let the disk guard fail open
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/diskGuard.ts`, CHANGELOG 1.4.0, `docs/CAPACITY.md` "Guard rails"
 
 ## Context

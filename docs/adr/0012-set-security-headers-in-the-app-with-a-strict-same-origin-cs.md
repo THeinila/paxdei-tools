@@ -1,5 +1,5 @@
 # 0012. Set security headers in the app with a strict same-origin CSP
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/securityHeaders.ts`, `deploy/Caddyfile`
 
 ## Context

@@ -1,5 +1,5 @@
 # 0003. Bundle the game data and serve every asset from our own origin
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: README intro, `scripts/README.md`, `.gitignore`, `server/securityHeaders.ts`
 
 ## Context

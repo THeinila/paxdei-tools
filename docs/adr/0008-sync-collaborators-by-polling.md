@@ -1,5 +1,5 @@
 # 0008. Sync collaborators by polling
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `src/tools/planner/lib/useList.ts`, CHANGELOG 1.4.0, `docs/CAPACITY.md` "The three ceilings"
 
 ## Context

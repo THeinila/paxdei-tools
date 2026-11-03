@@ -1,5 +1,5 @@
 # 0006. Share lists by secret token with no accounts
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: README "Sharing & collaboration", `server/lists.ts`, `src/tools/planner/lib/handle.ts`
 
 ## Context

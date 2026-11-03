@@ -1,5 +1,5 @@
 # 0004. Lazy-load the dataset as its own hashed chunk
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: CHANGELOG 1.4.0, `docs/CAPACITY.md`, `src/tools/planner/lib/data.ts`
 
 ## Context

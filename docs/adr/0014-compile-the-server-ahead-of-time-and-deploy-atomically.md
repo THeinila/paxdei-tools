@@ -1,5 +1,5 @@
 # 0014. Compile the server ahead of time and deploy atomically
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `scripts/build-server.mjs`, `deploy/deploy.sh`, `deploy/pax-planner.service`, CHANGELOG 1.4.0, `docs/CAPACITY.md` "Memory"
 
 ## Context

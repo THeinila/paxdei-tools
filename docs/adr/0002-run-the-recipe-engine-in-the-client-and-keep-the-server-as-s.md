@@ -1,5 +1,5 @@
 # 0002. Run the recipe engine in the client and keep the server as storage
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/lists.ts` header comment, `src/tools/planner/engine/`
 
 ## Context

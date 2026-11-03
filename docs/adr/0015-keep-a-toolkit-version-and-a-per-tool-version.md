@@ -1,5 +1,5 @@
 # 0015. Keep a toolkit version and a per-tool version
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `RELEASING.md`, README "Versioning", `src/shell/releases.ts`
 
 ## Context

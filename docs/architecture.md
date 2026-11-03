@@ -176,25 +176,25 @@ secrets. The toolkit version is inlined at build time as `__APP_VERSION__`.
 ## 5. Decisions
 
 All the ADRs below were backfilled on 2026-11-03 from the code, README and CHANGELOG, and
-are Proposed until accepted.
+were accepted on 2026-11-03.
 
 | ADR | Decision | Status |
 |---|---|---|
-| [0001](adr/0001-split-the-suite-into-tools-behind-one-registry.md) | Split the suite into tools behind one registry | Proposed |
-| [0002](adr/0002-run-the-recipe-engine-in-the-client-and-keep-the-server-as-s.md) | Run the recipe engine in the client and keep the server as storage | Proposed |
-| [0003](adr/0003-bundle-the-game-data-and-serve-every-asset-from-our-own-orig.md) | Bundle the game data and serve every asset from our own origin | Proposed |
-| [0004](adr/0004-lazy-load-the-dataset-as-its-own-hashed-chunk.md) | Lazy-load the dataset as its own hashed chunk | Proposed |
-| [0005](adr/0005-serve-the-spa-and-api-from-one-hono-and-sqlite-process.md) | Serve the SPA and API from one Hono and SQLite process | Proposed |
-| [0006](adr/0006-share-lists-by-secret-token-with-no-accounts.md) | Share lists by secret token with no accounts | Proposed |
-| [0007](adr/0007-make-every-list-server-backed.md) | Make every list server-backed | Proposed |
-| [0008](adr/0008-sync-collaborators-by-polling.md) | Sync collaborators by polling | Proposed |
-| [0009](adr/0009-use-additive-deltas-for-progress-and-version-guards-for-defi.md) | Use additive deltas for progress and version guards for definitions | Proposed |
-| [0010](adr/0010-sweep-shared-lists-after-a-ttl-of-write-inactivity.md) | Sweep shared lists after a TTL of write inactivity | Proposed |
-| [0011](adr/0011-collect-only-server-side-aggregate-metrics.md) | Collect only server-side aggregate metrics | Proposed |
-| [0012](adr/0012-set-security-headers-in-the-app-with-a-strict-same-origin-cs.md) | Set security headers in the app with a strict same-origin CSP | Proposed |
-| [0013](adr/0013-let-the-disk-guard-fail-open.md) | Let the disk guard fail open | Proposed |
-| [0014](adr/0014-compile-the-server-ahead-of-time-and-deploy-atomically.md) | Compile the server ahead of time and deploy atomically | Proposed |
-| [0015](adr/0015-keep-a-toolkit-version-and-a-per-tool-version.md) | Keep a toolkit version and a per-tool version | Proposed |
+| [0001](adr/0001-split-the-suite-into-tools-behind-one-registry.md) | Split the suite into tools behind one registry | Accepted |
+| [0002](adr/0002-run-the-recipe-engine-in-the-client-and-keep-the-server-as-s.md) | Run the recipe engine in the client and keep the server as storage | Accepted |
+| [0003](adr/0003-bundle-the-game-data-and-serve-every-asset-from-our-own-orig.md) | Bundle the game data and serve every asset from our own origin | Accepted |
+| [0004](adr/0004-lazy-load-the-dataset-as-its-own-hashed-chunk.md) | Lazy-load the dataset as its own hashed chunk | Accepted |
+| [0005](adr/0005-serve-the-spa-and-api-from-one-hono-and-sqlite-process.md) | Serve the SPA and API from one Hono and SQLite process | Accepted |
+| [0006](adr/0006-share-lists-by-secret-token-with-no-accounts.md) | Share lists by secret token with no accounts | Accepted |
+| [0007](adr/0007-make-every-list-server-backed.md) | Make every list server-backed | Accepted |
+| [0008](adr/0008-sync-collaborators-by-polling.md) | Sync collaborators by polling | Accepted |
+| [0009](adr/0009-use-additive-deltas-for-progress-and-version-guards-for-defi.md) | Use additive deltas for progress and version guards for definitions | Accepted |
+| [0010](adr/0010-sweep-shared-lists-after-a-ttl-of-write-inactivity.md) | Sweep shared lists after a TTL of write inactivity | Accepted |
+| [0011](adr/0011-collect-only-server-side-aggregate-metrics.md) | Collect only server-side aggregate metrics | Accepted |
+| [0012](adr/0012-set-security-headers-in-the-app-with-a-strict-same-origin-cs.md) | Set security headers in the app with a strict same-origin CSP | Accepted |
+| [0013](adr/0013-let-the-disk-guard-fail-open.md) | Let the disk guard fail open | Accepted |
+| [0014](adr/0014-compile-the-server-ahead-of-time-and-deploy-atomically.md) | Compile the server ahead of time and deploy atomically | Accepted |
+| [0015](adr/0015-keep-a-toolkit-version-and-a-per-tool-version.md) | Keep a toolkit version and a per-tool version | Accepted |
 
 ## 6. Quality goals
 

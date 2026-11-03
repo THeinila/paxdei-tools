@@ -1,5 +1,5 @@
 # 0001. Split the suite into tools behind one registry
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: README "Architecture", `src/tools/registry.tsx`, CHANGELOG 1.0.0
 
 ## Context

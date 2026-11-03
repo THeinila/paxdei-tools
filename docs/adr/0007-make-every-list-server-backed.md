@@ -1,5 +1,5 @@
 # 0007. Make every list server-backed
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: CHANGELOG 1.2.0, `src/tools/planner/lib/directory.ts`, `src/tools/planner/lib/useList.ts`
 
 ## Context

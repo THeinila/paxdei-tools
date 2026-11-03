@@ -1,5 +1,5 @@
 # 0005. Serve the SPA and API from one Hono and SQLite process
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/index.ts`, `server/db.ts`, `deploy/DEPLOY.md`, CHANGELOG 1.0.0
 
 ## Context

@@ -1,5 +1,5 @@
 # 0010. Sweep shared lists after a TTL of write inactivity
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/retention.ts`, `server/db.ts`, CHANGELOG 1.4.0, `docs/CAPACITY.md` "Retention"
 
 ## Context

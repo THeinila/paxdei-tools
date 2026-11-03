@@ -1,5 +1,5 @@
 # 0009. Use additive deltas for progress and version guards for definitions
-Status: Proposed · Date: 2026-11-03
+Status: Accepted · Date: 2026-11-03
 Backfilled from: `server/lists.ts`, `server/db.ts`, README "Architecture"
 
 ## Context
