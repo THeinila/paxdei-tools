@@ -1,5 +1,5 @@
 # Owned stock
-Key: OWN · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: OWN · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to enter what I already have, raw or crafted, so that the plan shows
@@ -64,17 +64,24 @@ Given any step whose have amount is greater than its demand,
 When the plan is computed,
 Then no quantity, craft count or total in the plan is below 0.
 
-### OWN-8: Invalid have input becomes 0
+### OWN-8: Have amounts are whole numbers, at least 0
 Given the "have" input on a row,
 When the user enters a negative number or text that isn't a number,
-Then the have amount is stored as 0.
+Then the have amount is stored as 0. When they enter a fraction, it is rounded down before
+anything is saved or planned (2.7 becomes 2).
 
 ## Non-functional requirements
 None.
 
 ## Open questions
-- (as-built) OWN-8: fractional amounts (for example 2.5) aren't rounded on the client; the
-  server truncates the delta. Should the input accept only whole numbers?
+None.
+
+## Discrepancies with the code
+- OWN-8: `OwnedInput` passes fractions through. The plan briefly uses 2.7, and the server
+  then truncates the delta, so the shown and saved values can differ until the next poll.
+  Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
+- 2026-11-03 — OWN-8 now rounds fractions down (settled as-built question; the code still differs)
+- 2026-11-03 — approved

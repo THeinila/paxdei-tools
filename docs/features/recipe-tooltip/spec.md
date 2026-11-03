@@ -1,5 +1,5 @@
 # Recipe tooltip and item labels
-Key: TIP · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: TIP · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to see an item's recipe when I hover over or tap it, so that I can check
@@ -81,3 +81,4 @@ None.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code; no existing tests)
+- 2026-11-03 — approved

@@ -1,5 +1,5 @@
 # Copy as Markdown
-Key: MDX · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: MDX · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to copy the plan as a Markdown checklist, so that I can paste it into
@@ -69,11 +69,22 @@ Given the clipboard accepts the write,
 When the user clicks "Copy as Markdown",
 Then the button reads "Copied!" for 2 seconds, then "Copy as Markdown" again.
 
+### MDX-10: A failed copy says so
+Given the browser rejects the clipboard write (permission denied or no clipboard access),
+When the user clicks "Copy as Markdown",
+Then the button reads "Copy failed" for 2 seconds, then "Copy as Markdown" again, and
+nothing is put on the clipboard.
+
 ## Non-functional requirements
 None.
 
 ## Open questions
-- (as-built) MDX-9: if the browser blocks clipboard access, nothing happens and nothing is shown. Should the user be told?
+None.
+
+## Discrepancies with the code
+- MDX-10: `copyMarkdown` swallows the error, and the button doesn't change. Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `markdown.test.ts`)
+- 2026-11-03 — MDX-10 added: a failed copy is reported (settled as-built question; the code still differs)
+- 2026-11-03 — approved

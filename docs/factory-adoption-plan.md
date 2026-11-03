@@ -35,11 +35,20 @@ every React component, `useList.ts` (polling and shared mode), `handle.ts`, `sto
 The factory assumes greenfield features: story → spec → red → green. Backfilling breaks
 three of those assumptions, so these rules apply only during adoption:
 
-1. **Spec from the code, not from a story.** The spec describes what the code does today.
-   Read the code, the tests, and the CHANGELOG entry for the feature. If behaviour looks
-   wrong or unintended, **don't fix it in the spec or the code**. Record it as an open
-   question tagged `(as-built)`. The user decides at approval time: keep it as specified
-   behaviour, or turn it into a fix AC that gets a normal red → green.
+1. **Spec from the code, not from a story.** Read the code, the tests, and the CHANGELOG
+   entry for the feature. If behaviour looks wrong or unintended, **don't fix it in the
+   code** during the backfill. Record it as an open question tagged `(as-built)`, and settle
+   it at approval:
+   - **Wrong:** the AC states the correct behaviour, and the spec gets a
+     `## Discrepancies with the code` entry saying what the code does instead.
+   - **Surprising but fine:** the AC keeps the current behaviour, and the open question
+     records why.
+
+   (Changed on 2026-11-03 at the user's direction. Originally every question went to the
+   user.) Discrepancy ACs get **no test during Phase 5**, because their test would be red.
+   They're fixed later as `fix(<KEY>):` work with a real red → green. Until then, the trace
+   lists them as uncovered, and the Phase 6 gate accepts that for ACs on a spec's
+   discrepancy list, and for no other ACs.
 2. **Characterisation red replaces red.** A test for existing behaviour passes the first
    time it runs, and the `tdd` skill says that proves nothing. The evidence instead is a
    **mutation red**: break the code under test (comment out the guard, flip the

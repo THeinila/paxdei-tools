@@ -1,5 +1,5 @@
 # Alternative recipe paths
-Key: ALT · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: ALT · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to pick between recipes that use different inputs, so that the plan uses
@@ -56,8 +56,10 @@ Then the item uses its first variant, and nothing breaks.
 None.
 
 ## Open questions
-- (as-built) ALT-1: the default is upstream's order, not a choice of ours (for example the
-  cheapest path). Is that the order we want to promise?
+None. ALT-1 was settled on 2026-11-03: upstream's first variant stays the default. The data
+gives no basis for ranking paths ("cheapest" depends on what a player has), and a stable
+default keeps existing lists' plans from changing.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
+- 2026-11-03 — approved

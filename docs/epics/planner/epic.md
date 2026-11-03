@@ -102,6 +102,13 @@ Draft ACs:
 - Backlog items such as station names, search filters and a "bought" toggle: the roadmap epic.
 
 ## Open questions
-- (as-built) MDX-4: when clipboard access is blocked, the copy fails silently. Should the user be told?
-- (as-built) ALT-1: the default variant is the dataset's first one, which is upstream's order. Is that the order we want to promise?
-- (as-built) SRCH-1: search matches names only. Category and profession filters are on the roadmap. Confirm that matching on names only is the specified behaviour for now.
+None. All eight specs were approved on 2026-11-03, and their as-built questions were settled
+in the specs. Four behaviours are specified differently from what the code does today, and
+are fixed later:
+
+| AC | Spec says | Code does |
+|---|---|---|
+| [PLAN-10](../../features/plan-engine/spec.md) | Tier count only counts tiers with unfinished crafts | Counts every tier |
+| [OWN-8](../../features/owned-stock/spec.md) | Fractional have amounts are rounded down | Passes them through |
+| [MDX-10](../../features/markdown-export/spec.md) | A failed copy shows "Copy failed" | Fails silently |
+| [SRCH-4](../../features/item-search/spec.md) | Readable category labels | Internal category IDs |

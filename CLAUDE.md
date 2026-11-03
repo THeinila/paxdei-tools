@@ -13,8 +13,10 @@ implementation → review → local PR draft.
 
 Adoption is in progress: [docs/factory-adoption-plan.md](docs/factory-adoption-plan.md).
 Until it's finished, existing features may not have specs yet. During the backfill:
-- Specs describe the code as it is. Record suspect behaviour as an `(as-built)` open
-  question; don't fix it silently.
+- Specs describe the behaviour we want. Where the code does something that's wrong, the AC
+  states the correct behaviour, and the spec lists the gap under "Discrepancies with the
+  code". The code is fixed later, through a normal red → green, not during the backfill.
+  Behaviour that's merely surprising is kept and its reasoning is recorded in Open questions.
 - A test for behaviour that already exists needs **mutation red**: break the code under
   test, watch the test fail for the expected reason, revert, and record
   `RED(mutation): <file:line change> → <n> failed`.

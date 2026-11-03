@@ -1,5 +1,5 @@
 # Ready badges and stack counts
-Key: RDY · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: RDY · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to see which crafts I can do right now and how many inventory stacks an
@@ -70,9 +70,11 @@ Then no stack breakdown is shown.
 None.
 
 ## Open questions
-- (as-built) RDY-1: "ready" ignores raw materials that haven't been gathered yet, so a craft
-  can be "ready" while you hold none of its inputs. The engine can treat gathers as blocking
-  but the UI doesn't. Keep the looser meaning?
+None. RDY-1 was settled on 2026-11-03: "ready" means "no unfinished sub-craft blocks this".
+That answers the question the badge is for: which craft to do next once you're at the
+bench with your gathered materials. Counting gathers too would put nothing in a fresh plan
+on a ready badge.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `view.test.ts`)
+- 2026-11-03 — approved

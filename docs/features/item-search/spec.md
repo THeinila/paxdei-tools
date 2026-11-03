@@ -1,5 +1,5 @@
 # Item search
-Key: SRCH · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: SRCH · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to search the item catalogue by name and add an item with a quantity, so
@@ -43,8 +43,10 @@ the start of the name ranks higher, then a shorter name. At most 40 results are 
 ### SRCH-4: Each result describes the item
 Given a result,
 When it is shown,
-Then it shows the item's icon, name and rarity tag (TIP-6), and "raw material" for raw items
-or the item's category otherwise.
+Then it shows the item's icon, name and rarity tag (TIP-6), and a category label: "Raw
+material" for raw items, otherwise the category's readable name (for example
+"Building pieces", never an internal ID such as "buildingpieces"). An item with no category
+shows "Item".
 
 ### SRCH-5: Each result has its own quantity, at least 1
 Given a result,
@@ -84,10 +86,15 @@ Then the catalogue chunk isn't requested. It is requested only when a planner ro
 [CAPACITY.md](../../CAPACITY.md) "Cost per request").
 
 ## Open questions
-- (as-built) SRCH-4: the category shown is the dataset's internal ID (for example
-  "buildingpieces"), and items without one show nothing. Should we show a readable label?
-- (as-built) SRCH-6: after an item is added, the query and the dropdown stay as they were. Is
-  that intended, so that several items can be added in a row?
+None. SRCH-6 was settled on 2026-11-03: the query and the dropdown stay open after an add,
+so that several related items can be added in a row.
+
+## Discrepancies with the code
+- SRCH-4: `Search.tsx` shows `mainCategoryId` as is ("buildingpieces", "materials"), shows
+  "raw material" in lower case, and shows nothing for items without a category. Fix pending.
+  It needs a label table for the 13 category IDs in the dataset.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code; no existing tests)
+- 2026-11-03 — SRCH-4 now requires readable category labels (settled as-built question; the code still differs)
+- 2026-11-03 — approved

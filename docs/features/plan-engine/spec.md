@@ -1,5 +1,5 @@
 # Flattened crafting plan
-Key: PLAN · Status: Draft · Owner: — · Updated: 2026-11-03
+Key: PLAN · Status: Approved · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want the full tree of crafts behind my targets flattened into one plan, so
@@ -83,15 +83,21 @@ Given a non-empty plan,
 When it is shown,
 Then the summary reads "<g> to gather · <c> crafts in <t> tiers", where g is the number of
 gather steps not yet covered by owned stock, c is the total number of crafts across all
-craft steps, and t is the number of distinct tiers among the craft steps. "craft" and "tier"
-are singular when the count is 1.
+craft steps, and t is the number of distinct tiers among the craft steps that aren't
+satisfied. "craft" and "tier" are singular when the count is 1. When everything is owned, it
+reads "0 crafts in 0 tiers".
 
 ## Non-functional requirements
 None. The engine runs in the client ([ADR 0002](../../adr/0002-run-the-recipe-engine-in-the-client-and-keep-the-server-as-s.md)), and nothing measures its time today.
 
 ## Open questions
-- (as-built) PLAN-10: t also counts tiers whose craft steps are all covered by owned stock, so
-  the tier count doesn't shrink as work is done. Is that intended?
+None.
+
+## Discrepancies with the code
+- PLAN-10: `buildPlanView` counts the tiers of every craft step, including satisfied ones, so
+  the tier count doesn't drop as work is done and disagrees with c. Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
+- 2026-11-03 — PLAN-10 now counts only tiers with unfinished crafts (settled as-built question; the code still differs)
+- 2026-11-03 — approved
