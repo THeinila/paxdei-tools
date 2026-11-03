@@ -2,7 +2,7 @@
 Status: Draft · Updated: 2026-11-03
 
 ## Goal
-The backlog of features that aren't built yet, migrated from SPRINT_PLAN.md (open items as
+The backlog of features that aren't built yet, migrated from SPRINT_PLAN.md (deleted in adoption Phase 6; see git history) (open items as
 of 1.5.1) so that each one can start through `/workflow:start` with a slug, a key and draft
 ACs. Nothing here is committed to. The order is a rough priority, carried over from
 SPRINT_PLAN's High / Medium / Backlog grouping. The draft ACs are a sketch, to be replaced
@@ -16,7 +16,7 @@ Items from SPRINT_PLAN that are **not** carried over:
 - *Component tests for the plan view*: covered by the adoption plan, Phase 5.
 
 More candidates borrowed from FFXIV Teamcraft (per-item comments, item tags, an area
-breakdown) are ranked in [TEAMCRAFT_ANALYSIS.md](../../TEAMCRAFT_ANALYSIS.md). They get
+breakdown) are ranked in [teamcraft-analysis.md](../../research/teamcraft-analysis.md). They get
 an entry here when someone picks them up.
 
 ## Features

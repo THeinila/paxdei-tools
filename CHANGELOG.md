@@ -210,7 +210,7 @@ every constant below.
   toolbar above it: **Tiered** (the previous fixed view, still the default), **Flat**
   (the engine's dependency order in one list) and **By profession** (grouped by station,
   deepest components first within each). Borrowed from FFXIV Teamcraft's layout system,
-  cut down to three presets — see [docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md).
+  cut down to three presets — see [docs/research/teamcraft-analysis.md](docs/research/teamcraft-analysis.md).
 - **Hide completed** drops rows the owned stock already covers and reports how many it
   hid; **every section heading collapses**, caret and `aria-expanded` included.
 - **Ready badges** on craft steps that nothing unfinished in the plan blocks. Raw
