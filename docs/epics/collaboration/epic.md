@@ -82,11 +82,4 @@ in the specs. Keeping have amounts on clear (EDT-10), non-idempotent deltas (PRG
 footer's constant (RET-9) stay as they are. Six behaviours are specified differently from what
 the code does today, and are fixed later:
 
-| AC | Spec says | Code does |
-|---|---|---|
-| [SHR-5](../../features/share-link/spec.md) | A failed "Copy link" shows "Copy failed" | Fails silently |
-| [SHR-8](../../features/share-link/spec.md) | A missing or swept list says it no longer exists, and offers removal | Shows an empty, editable list with "⚠ not found" |
-| [LST-6](../../features/list-management/spec.md) | Directory rename retries a conflict up to 3 times | Retries once |
-| [LST-9](../../features/list-management/spec.md) | The card's button reads "remove" | Reads "delete" |
-| [PRG-7](../../features/shared-progress/spec.md) | Declining the name prompt still saves, unattributed, and doesn't ask again on this page | Drops the write, and asks again on every keystroke |
-| [EDT-9](../../features/definition-edits/spec.md) | "Clear" asks for confirmation | Clears for everyone at once |
+All of them were fixed in Phase 5b on 2026-11-03, each with a test that failed first: SHR-5 and EDT-9 (91cfd9a), LST-6 and LST-9 (edc93ca), PRG-7 (1dabd59), SHR-8 (8846326).

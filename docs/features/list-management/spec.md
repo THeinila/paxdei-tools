@@ -102,7 +102,6 @@ None.
 ## Open questions
 None.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `directory.test.ts`)
 - 2026-11-03 — LST-9 renames the button to "remove", and LST-6 aligns the rename retries with EDT-3 (settled as-built questions; the code still differs)

@@ -81,7 +81,6 @@ None.
 ## Open questions
 None.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `markdown.test.ts`)
 - 2026-11-03 — MDX-10 added: a failed copy is reported (settled as-built question; the code still differs)

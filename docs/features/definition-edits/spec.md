@@ -90,7 +90,6 @@ None. EDT-10 was settled on 2026-11-03: have amounts are what the group holds, w
 doesn't change when the targets do. Deleting them would silently discard other people's
 records.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `lists.test.ts`)
 - 2026-11-03 — EDT-9 adds a confirmation before clearing; EDT-10 keeps have amounts (settled as-built questions; the code still differs on EDT-9)

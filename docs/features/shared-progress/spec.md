@@ -121,7 +121,6 @@ The client never retries a failed write by itself (PRG-13), so a write is only c
 when a response is lost after the server committed it and the user then re-enters the same
 amount. The next poll shows the doubled total, and the user can correct it.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code, `lists.test.ts` and `progressMerge.test.ts`)
 - 2026-11-03 — PRG-7 specifies saving without a name (settled as-built question; the code still differs)

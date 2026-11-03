@@ -106,9 +106,4 @@ None. All eight specs were approved on 2026-11-03, and their as-built questions 
 in the specs. Four behaviours are specified differently from what the code does today, and
 are fixed later:
 
-| AC | Spec says | Code does |
-|---|---|---|
-| [PLAN-10](../../features/plan-engine/spec.md) | Tier count only counts tiers with unfinished crafts | Counts every tier |
-| [OWN-8](../../features/owned-stock/spec.md) | Fractional have amounts are rounded down | Passes them through |
-| [MDX-10](../../features/markdown-export/spec.md) | A failed copy shows "Copy failed" | Fails silently |
-| [SRCH-4](../../features/item-search/spec.md) | Readable category labels | Internal category IDs |
+All of them were fixed in Phase 5b on 2026-11-03, each with a test that failed first: PLAN-10 (6c65e80), OWN-8 and MDX-10 (b0d18c9), SRCH-4 (4760aa3).

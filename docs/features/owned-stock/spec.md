@@ -76,7 +76,6 @@ None.
 ## Open questions
 None.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
 - 2026-11-03 — OWN-8 now rounds fractions down (settled as-built question; the code still differs)

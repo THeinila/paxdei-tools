@@ -101,7 +101,6 @@ that grants access to a list
 ## Open questions
 None.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `lists.test.ts`)
 - 2026-11-03 — SHR-5 and SHR-8 specify the intended behaviour (settled as-built questions; the code still differs)

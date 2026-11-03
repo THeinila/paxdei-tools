@@ -93,7 +93,6 @@ None. The engine runs in the client ([ADR 0002](../../adr/0002-run-the-recipe-en
 ## Open questions
 None.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
 - 2026-11-03 — PLAN-10 now counts only tiers with unfinished crafts (settled as-built question; the code still differs)

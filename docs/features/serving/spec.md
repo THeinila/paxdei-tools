@@ -94,7 +94,6 @@ the dataset chunk, so returning users don't download it again
 None. SRV-2 was settled on 2026-11-03: icons get 30 days rather than `immutable`, so that
 artwork replaced under the same name reaches users within a month.
 
-
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `securityHeaders.test.ts`)
 - 2026-11-03 — SRV-5 specifies a JSON 404 for unknown API paths (found in the backfill; the code still differs)

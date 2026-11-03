@@ -72,7 +72,4 @@ when SRV-10 was added during Phase 5, and was re-approved the same day.
 - One behaviour, found during the backfill, is specified differently from the code. It will
   be fixed later:
 
-| AC | Spec says | Code does |
-|---|---|---|
-| [SRV-5](../../features/serving/spec.md) | An unknown `/api/*` path returns a JSON 404 | `GET` falls through to the SPA fallback and returns `index.html` with 200 |
-| [SRV-10](../../features/serving/spec.md) | /healthz gives 503 "db unavailable" to every client when the database is down | The day's first probe from each address gets 500 (found in Phase 5) |
+All of them were fixed in Phase 5b on 2026-11-03, each with a test that failed first: SRV-5 and SRV-10 (3aff219).

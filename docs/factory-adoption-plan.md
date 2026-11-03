@@ -243,6 +243,10 @@ SHR-8, LST-6, LST-9, PRG-7, EDT-9, SRV-5 and SRV-10 (found in Phase 5). Each one
 - A release follows, because these change app behaviour, unlike the rest of the backfill.
 - **Done when** no spec has a discrepancy entry, and the trace has no uncovered discrepancy
   ACs.
+- **Done 2026-11-03.** All 12 fixed in 8 `fix(...)` commits, each with a red test first (the
+  commit message records it). No spec has a discrepancy section, and the trace passes all
+  188 ACs. Along the way: the SHR-8 fix also stops polling a list that's gone, and the
+  MET-N1 trim test got a 30 s timeout after timing out under a full parallel run.
 
 ### Phase 6: Verify and finish
 - `verification-before-completion`: the full suite, the typecheck, and the trace with
