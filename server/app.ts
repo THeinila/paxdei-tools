@@ -97,6 +97,10 @@ export function createApp({ db, diskGuard, statsToken, distDir = "./dist" }: App
   //   curl -H "Authorization: Bearer $STATS_TOKEN" https://<host>/api/stats
   app.route("/api", createStatsRouter(db, { token: statsToken }));
 
+  // Anything else under /api is an API 404, whatever the method, so a mistyped
+  // or retired endpoint never falls through to the SPA's index.html (SRV-5).
+  app.all("/api/*", (c) => c.json({ error: "not found" }, 404));
+
   // Liveness probe for an external uptime checker. Deliberately unauthenticated
   // and free of detail — it touches the database (so a wedged SQLite file shows up
   // as a failure rather than a cheerful 200) but leaks no counts or versions.

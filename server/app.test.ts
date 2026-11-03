@@ -220,3 +220,36 @@ describe("headers and guards on the assembled app", () => {
     expect((await low.request(`/api/lists/${token}/progress`, json("POST", { itemId: "wood", delta: 1 }))).status).toBe(200);
   });
 });
+
+describe("unknown API paths and health under failure", () => {
+  it("SRV-5: an unknown /api/* path is a JSON 404 for any method, never index.html", async () => {
+    for (const app of [appWith(), appWith({ withDist: false })]) {
+      for (const [method, path] of [
+        ["GET", "/api/nope"],
+        ["GET", "/api/lists/tok/unknown"],
+        ["POST", "/api/nope"],
+        ["DELETE", "/api/lists/tok"],
+      ] as const) {
+        const res = await app.request(path, { method, headers: { "content-type": "application/json" }, body: method === "GET" ? undefined : "{}" });
+        expect({ path, method, status: res.status }).toEqual({ path, method, status: 404 });
+        expect(res.headers.get("content-type")).toMatch(/application\/json/);
+        expect(await res.json()).toEqual({ error: "not found" });
+      }
+    }
+  });
+
+  it("SRV-5: known API routes and the SPA fallback still work", async () => {
+    const app = appWith();
+    const created = await app.request("/api/lists", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    expect(created.status).toBe(201);
+    expect((await app.request("/planner/x")).status).toBe(200);
+  });
+
+  it("SRV-10: /healthz reports a dead database as 503 to a client not yet counted today", async () => {
+    const app = appWith();
+    db.close();
+    const res = await app.request("/healthz", from("10.7.7.7")); // never seen before
+    expect(res.status).toBe(503);
+    expect(await res.text()).toBe("db unavailable");
+  });
+});

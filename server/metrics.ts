@@ -65,8 +65,15 @@ export function visitorTracking(db: DB): MiddlewareHandler {
       const hash = createHmac("sha256", pepper).update(clientKey(c)).digest("hex");
       const day = today();
       if (seen.get(hash) !== day) {
-        upsert.run(hash, day, day);
-        seen.set(hash, day);
+        // Counting is best-effort: a failed write (say, the database is down)
+        // must never change the response, least of all /healthz's (SRV-10).
+        // The client stays unseen, so the next request tries again.
+        try {
+          upsert.run(hash, day, day);
+          seen.set(hash, day);
+        } catch {
+          return next();
+        }
         // Drop stale entries so the cache can't grow without bound.
         if (seen.size > 50_000) {
           for (const [k, v] of seen) if (v !== day) seen.delete(k);

@@ -94,14 +94,6 @@ the dataset chunk, so returning users don't download it again
 None. SRV-2 was settled on 2026-11-03: icons get 30 days rather than `immutable`, so that
 artwork replaced under the same name reaches users within a month.
 
-## Discrepancies with the code
-- SRV-10: visitor tracking runs before `/healthz` and writes to the database the first time a
-  client is seen each day. With the database down, that write throws, so the day's first
-  probe from each address gets 500 "Internal Server Error" instead of 503
-  "db unavailable". Found while testing SRV-6. Fix pending.
-- SRV-5: an unknown `GET /api/...` falls through to the SPA fallback and returns
-  `index.html` with 200 when `dist/` exists. Without `dist/`, Hono's default plain-text 404 is
-  returned. Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `securityHeaders.test.ts`)
@@ -109,3 +101,5 @@ artwork replaced under the same name reaches users within a month.
 - 2026-11-03 — approved
 - 2026-11-03 — SRV-10 added, from a failure found while testing SRV-6 (the code still differs); back to Draft for re-approval
 - 2026-11-03 — re-approved with SRV-10
+- 2026-11-03 — SRV-5 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — SRV-10 fixed in the code (Phase 5b); discrepancy closed
