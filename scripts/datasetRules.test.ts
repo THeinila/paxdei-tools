@@ -180,6 +180,8 @@ describe("dataset rules", () => {
     }
   });
 
+  // The real-data half of DAT-N1 needs scripts/.cache, which isn't in git:
+  // `npm run check:dataset` rebuilds from it and diffs against data/dataset.json.
   it("DAT-N1: the same input always gives the same dataset, apart from generatedAt", () => {
     const raw = [
       recipe("r_sap", e("charcoal"), [[e("sapwood"), 50]], { count: 50 }),

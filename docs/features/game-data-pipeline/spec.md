@@ -9,10 +9,12 @@ curation rules applied, so that a game patch is a re-run and a reviewed diff, no
 - Architecture: [architecture.md](../../architecture.md) §2 "Data pipeline", §3 (`scripts/`)
 - ADRs: [0003](../../adr/0003-bundle-the-game-data-and-serve-every-asset-from-our-own-orig.md) (bundled data, local icons)
 - Related: [data epic](../../epics/data/epic.md) #1, [scripts/README.md](../../../scripts/README.md).
-  Code: `scripts/build-dataset.ts`, `scripts/fetch-icons.ts`, `src/tools/planner/lib/iconName.ts`.
+  Code: the rules in `scripts/datasetRules.ts` and `scripts/iconPlan.ts`, wired to files and
+  the network by `scripts/build-dataset.ts` and `scripts/fetch-icons.ts`;
+  `src/tools/planner/lib/iconName.ts`. `npm run check:dataset` checks DAT-N1 on the real cache.
   The scripts call the network, so tests cover only their pure functions (CLAUDE.md). The
-  rules may have to be extracted from the scripts first, as a refactor that doesn't change
-  the output (DAT-N1).
+  rules were extracted from the scripts in Phase 5, as refactors that didn't change the
+  output (DAT-N1).
 - Terms:
   - **raw recipes**: the rehydrated upstream recipe list (`scripts/.cache/recipes.raw.json`).
   - **market catalogue**: the upstream item list (`items.market.json`).
@@ -138,3 +140,4 @@ covers the mechanism, and the list's contents may change with the game.
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `scripts/README.md`; no existing tests)
 - 2026-11-03 — approved
+- 2026-11-03 — Context updated for the Phase 5 extraction and `check:dataset` (no AC change)

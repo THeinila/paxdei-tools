@@ -7,6 +7,7 @@
   "scripts": {
     "fetch:raw": "tsx scripts/fetch-raw.ts",
     "build:dataset": "tsx scripts/build-dataset.ts",
+    "check:dataset": "tsx scripts/check-dataset.ts",
     "fetch:icons": "tsx scripts/fetch-icons.ts",
     "data": "npm run fetch:raw && npm run build:dataset && npm run fetch:icons",
     "dev": "vite",

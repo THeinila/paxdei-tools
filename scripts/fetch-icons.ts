@@ -3,7 +3,7 @@
  * app is fully self-standing (zero external requests at runtime).
  *
  * Local filename is derived deterministically from the icon path; the same
- * function is used by the app (src/lib/data.ts -> localIconName) so URLs line up
+ * function is used by the app (src/tools/planner/lib/data.ts -> lib/iconName.ts) so URLs line up
  * without needing a stored mapping.
  *
  * Prereq: data/dataset.json must exist (npm run build:dataset).
