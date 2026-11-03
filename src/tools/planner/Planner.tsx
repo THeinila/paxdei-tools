@@ -87,7 +87,7 @@ export default function Planner() {
 function ListEditor({ token, entryId }: { token: string; entryId: string }) {
   const { state, result, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
     useList(token);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [handle, setHandleState] = useState<string | null>(getHandle());
   const [titleDraft, setTitleDraft] = useState(state.name);
   // Per-browser view settings for this list. ListEditor is keyed by token, so a
@@ -117,15 +117,21 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
   }
 
   async function copyLink() {
-    setCopied(false);
+    setCopyState("idle");
     const url = `${window.location.origin}/planner/${token}`;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyState("copied");
     } catch {
-      /* clipboard may be blocked */
+      // Clipboard access can be blocked; say so instead of failing silently.
+      setCopyState("failed");
     }
+    setTimeout(() => setCopyState("idle"), 2000);
+  }
+
+  function onClear() {
+    // Clearing empties the list for every collaborator, so ask first.
+    if (window.confirm("Remove every target from this list, for everyone using it?")) clear();
   }
 
   function onRename() {
@@ -159,7 +165,7 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
             </button>
           </span>
           <button className="share-btn" onClick={copyLink}>
-            {copied ? "Link copied!" : "Copy link"}
+            {copyState === "copied" ? "Link copied!" : copyState === "failed" ? "Copy failed" : "Copy link"}
           </button>
         </div>
       </div>
@@ -175,7 +181,7 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
             <div className="targets-head">
               <h2>Crafting list</h2>
               {state.targets.length > 0 && (
-                <button className="link-btn" onClick={clear}>
+                <button className="link-btn" onClick={onClear}>
                   clear
                 </button>
               )}

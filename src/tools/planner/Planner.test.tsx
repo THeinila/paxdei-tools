@@ -77,6 +77,33 @@ describe("list editor", () => {
     expect(screen.getByRole("button", { name: "Copy link" })).toBeTruthy();
   });
 
+  it("SHR-5: a failed Copy link says so for 2 seconds", async () => {
+    server.seed(TOKEN);
+    const writeText = vi.fn().mockRejectedValue(new Error("NotAllowedError"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    await openEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Copy link" }));
+    await settle();
+    expect(screen.getByRole("button", { name: "Copy failed" })).toBeTruthy();
+    await settle(2000);
+    expect(screen.getByRole("button", { name: "Copy link" })).toBeTruthy();
+  });
+
+  it("EDT-9: clear asks first, and cancelling changes nothing", async () => {
+    server.seed(TOKEN, { targets: [{ itemId: "table", quantity: 1 }], pathChoices: { charcoal: "r_charcoal_heartwood" } });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    await openEditor();
+    fireEvent.click(screen.getByRole("button", { name: "clear" }));
+    await settle();
+    expect(confirm).toHaveBeenCalledWith("Remove every target from this list, for everyone using it?");
+    expect(server.list(TOKEN).state.targets).toHaveLength(1);
+    expect(server.countOf("PATCH")).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "clear" }));
+    await settle();
+    expect(server.list(TOKEN).state).toMatchObject({ targets: [], pathChoices: {} });
+  });
+
   it("SHR-6: opening someone else's link adds it to my directory, then names it", async () => {
     server.seed(TOKEN, { name: "Guild order", targets: [{ itemId: "nail", quantity: 1 }] });
     server.hold("GET");

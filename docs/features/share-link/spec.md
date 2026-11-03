@@ -102,8 +102,6 @@ that grants access to a list
 None.
 
 ## Discrepancies with the code
-- SHR-5: `copyLink` in `Planner.tsx` swallows the clipboard error, and the button doesn't
-  change. Fix pending.
 - SHR-8: a 404 shows the editor with an empty list and the warning "⚠ not found". The user
   can add items to it, and every edit then fails. Fix pending.
 
@@ -111,3 +109,4 @@ None.
 - 2026-11-03 — created (backfilled from the code and `lists.test.ts`)
 - 2026-11-03 — SHR-5 and SHR-8 specify the intended behaviour (settled as-built questions; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — SHR-5 fixed in the code (Phase 5b); discrepancy closed
