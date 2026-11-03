@@ -327,8 +327,8 @@ export function useList(token: string): UseList {
       // Write the delta from what we currently show, attributed to the handle.
       // Read through the synchronous mirror, not React state: back-to-back edits
       // must each subtract from the previous one, not from a stale render.
+      // No name is fine: the write is saved unattributed (PRG-7).
       const handle = ensureHandle();
-      if (!handle) return;
       const before = progressRef.current[itemId];
       const current = before?.qty ?? 0;
       const target = Math.max(0, qty);

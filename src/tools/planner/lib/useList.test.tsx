@@ -2,6 +2,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadDataset } from "./data.ts";
+import { resetDeclinedHandle } from "./handle.ts";
 import { installFakeServer } from "./testServer.ts";
 import { useList } from "./useList.ts";
 
@@ -30,6 +31,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   localStorage.clear();
+  resetDeclinedHandle(); // each test is a fresh page
   setVisibility("visible");
 });
 
@@ -90,6 +92,37 @@ describe("useList progress", () => {
     act(() => result.current.setOwned("wood", 3));
     await settle();
     expect(prompt).toHaveBeenCalledTimes(1); // not asked again
+  });
+
+  it("PRG-7: declining the name still saves the write, and doesn't ask again", async () => {
+    localStorage.removeItem(HANDLE_KEY);
+    const prompt = vi.spyOn(window, "prompt").mockReturnValue(null);
+    server.seed(TOKEN);
+    const { result } = await open();
+    act(() => result.current.setOwned("wood", 1)); // typing "12": two writes
+    act(() => result.current.setOwned("wood", 12));
+    await settle();
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(progressPosts()).toEqual([
+      { itemId: "wood", delta: 1, handle: null },
+      { itemId: "wood", delta: 11, handle: null },
+    ]);
+    expect(server.list(TOKEN).progress.get("wood")).toMatchObject({ qty: 12, byHandle: null });
+    expect(result.current.state.owned.wood).toBe(12);
+  });
+
+  it("PRG-7: choosing to set a name asks again", async () => {
+    localStorage.removeItem(HANDLE_KEY);
+    const prompt = vi.spyOn(window, "prompt").mockReturnValueOnce(null).mockReturnValueOnce("Dana");
+    server.seed(TOKEN);
+    const { result } = await open();
+    act(() => result.current.setOwned("wood", 1)); // declined
+    const { promptHandle } = await import("./handle.ts");
+    expect(promptHandle()).toBe("Dana"); // "set your name"
+    act(() => result.current.setOwned("wood", 2));
+    await settle();
+    expect(prompt).toHaveBeenCalledTimes(2);
+    expect(progressPosts().at(-1)).toMatchObject({ handle: "Dana" });
   });
 
   it("PRG-13: a failed write is undone and reported", async () => {
