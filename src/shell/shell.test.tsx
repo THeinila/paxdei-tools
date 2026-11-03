@@ -22,17 +22,22 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  current?.dispose(); // stop it listening to window history
+  current = undefined;
   vi.useRealTimers();
   vi.unstubAllGlobals();
   localStorage.clear();
   gate.wait = Promise.resolve();
 });
 
+let current: { dispose(): void } | undefined;
+
 async function openApp(path: string, before?: (registry: typeof import("../tools/registry.tsx")) => void) {
   window.history.replaceState(null, "", path);
   const registry = await import("../tools/registry.tsx");
   before?.(registry);
   const { router } = await import("../routes.tsx");
+  current = router;
   render(<RouterProvider router={router} />);
   await act(async () => {});
   return router;

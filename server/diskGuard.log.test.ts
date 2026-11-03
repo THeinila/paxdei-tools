@@ -30,7 +30,8 @@ describe("disk guard logging", () => {
 
   it("ABU-8: a failed measurement is logged and treated as not low", async () => {
     const { statfs } = await import("node:fs/promises");
-    vi.mocked(statfs).mockRejectedValue(new Error("EACCES"));
+    // Twice: the guard retries on the database's directory when the file can't be measured.
+    vi.mocked(statfs).mockRejectedValueOnce(new Error("EACCES")).mockRejectedValueOnce(new Error("EACCES"));
     const log = vi.fn();
     const guard = createDiskGuard({ path: "/data/db.sqlite", minFreeBytes: 100, log });
     const s = await guard.refresh();

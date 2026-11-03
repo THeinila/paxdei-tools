@@ -6,6 +6,7 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { build, type Plugin } from "vite";
 
@@ -23,6 +24,7 @@ async function buildInto(plugins: Plugin[] = []): Promise<{ dir: string; manifes
   const dir = mkdtempSync(join(tmpdir(), "pax-bundle-"));
   outDirs.push(dir);
   await build({
+    root: fileURLToPath(new URL("..", import.meta.url)), // the repo, wherever vitest was started
     logLevel: "silent",
     plugins,
     build: { outDir: dir, emptyOutDir: true, manifest: true },
