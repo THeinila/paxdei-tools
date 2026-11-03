@@ -77,6 +77,12 @@ describe("planToMarkdown", () => {
     expect(big).toContain("- [ ] wood ×240 — 2 stacks + 40");
   });
 
+  it("MDX-3: notes the surplus when a craft makes more than needed", () => {
+    const ds = fixture();
+    const vm = buildPlanView(plan(ds, [{ itemId: "nail", quantity: 7 }]), ds.items, prefs());
+    expect(planToMarkdown(vm, { listName: "Nails" })).toContain("- [ ] nail ×7 — 2 crafts → makes 10 · Test");
+  });
+
   it("MDX-8: falls back to a name for an untitled list", () => {
     const ds = fixture();
     const vm = buildPlanView(plan(ds, [{ itemId: "wood", quantity: 1 }]), ds.items, prefs());

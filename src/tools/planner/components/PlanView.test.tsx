@@ -11,7 +11,9 @@ import { PlanView } from "./PlanView.tsx";
 // for the engine's fixture graph so these tests don't move with game updates.
 vi.mock("../../../../data/dataset.json", async () => {
   const { fixture } = await import("../engine/testFixtures.ts");
-  return { default: fixture() };
+  const ds = fixture();
+  ds.items.wood = { ...ds.items.wood!, maxStackSize: 100 };
+  return { default: ds };
 });
 
 let ds: Awaited<ReturnType<typeof loadDataset>>;
@@ -123,6 +125,53 @@ describe("PlanView", () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(screen.queryByText("iron_ore")).toBeTruthy();
+  });
+
+  it("PLAN-7: shows the cycle warning above the plan", () => {
+    render(<Harness targets={[{ itemId: "cyc_a", quantity: 1 }]} />);
+    expect(
+      screen.getByText("⚠ Recipe cycle detected; the steps involved may be listed in arbitrary order."),
+    ).toBeTruthy();
+  });
+
+  it("OWN-4: a fully owned craft row says \"have enough\"", () => {
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} owned={{ plank: 4 }} />);
+    expect(within(rowFor("plank")).getByText("have enough")).toBeTruthy();
+    expect(rowFor("plank").className).toContain("satisfied");
+    expect(within(rowFor("nail")).queryByText("have enough")).toBeNull();
+  });
+
+  it("RDY-1: ready crafts carry a badge, blocked ones don't", () => {
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} />);
+    expect(within(rowFor("plank")).getByText("ready")).toBeTruthy();
+    expect(within(rowFor("nail")).getByText("ready")).toBeTruthy();
+    expect(within(rowFor("table")).queryByText("ready")).toBeNull();
+  });
+
+  it("RDY-7: rows over one stack show the stack breakdown", () => {
+    render(<Harness targets={[{ itemId: "table", quantity: 30 }]} />); // wood 240, stack 100
+    expect(within(rowFor("wood")).getByText("2 stacks + 40")).toBeTruthy();
+    expect(within(rowFor("iron_ore")).queryByText(/stack/)).toBeNull();
+  });
+
+  it("LAY-2: the flat preset heads its one section \"Craft (n)\"", () => {
+    render(
+      <Harness
+        targets={[{ itemId: "table", quantity: 1 }]}
+        owned={{ nail: 10 }}
+        initialPrefs={{ preset: "flat" }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /Craft \(2\)/ })).toBeTruthy(); // nail is satisfied
+    expect(screen.queryByText(/Components · Tier/)).toBeNull();
+  });
+
+  it("LAY-5: the toolbar counts hidden rows, and says nothing when none are hidden", () => {
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} owned={{ plank: 4 }} />);
+    expect(screen.queryByText(/hidden$/)).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Hide completed" }));
+    expect(screen.getByText("2 hidden")).toBeTruthy(); // plank and its wood
+    expect(screen.queryByText("plank")).toBeNull();
   });
 
   it("TIP-8: gather rows link to their gaming.tools page in a new tab, without a referrer", () => {

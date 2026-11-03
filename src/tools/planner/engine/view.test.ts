@@ -33,6 +33,27 @@ describe("buildPlanView presets", () => {
     expect(vm.sections[1]!.heading).toBe("Components · Tier 1");
   });
 
+  it("LAY-1: sorts a tier by profession before name", () => {
+    const ds = fixture();
+    ds.recipes.plank!.variants[0]!.profession = "Alchemy"; // name sorts plank after nail
+    ds.recipes.nail!.variants[0]!.profession = "Smithing";
+    const vm = buildPlanView(plan(ds, [{ itemId: "table", quantity: 1 }]), ds.items, prefs());
+    expect(idsIn(vm, "craft:tier:1")).toEqual(["plank", "nail"]);
+  });
+
+  it("LAY-3: sorts a profession's rows deepest tier first, then by name", () => {
+    const ds = fixture();
+    ds.items.table = { ...ds.items.table!, name: "Atable" }; // name alone would put it first
+    ds.recipes.plank!.variants[0]!.profession = "Carpentry";
+    ds.recipes.table!.variants[0]!.profession = "Carpentry";
+    const vm = buildPlanView(
+      plan(ds, [{ itemId: "table", quantity: 1 }]),
+      ds.items,
+      prefs({ preset: "profession" }),
+    );
+    expect(idsIn(vm, "craft:prof:Carpentry")).toEqual(["plank", "table"]);
+  });
+
   it("LAY-2: flat keeps the engine's dependency-first order in one section", () => {
     const p = tablePlan();
     const vm = buildPlanView(p, fixture().items, prefs({ preset: "flat" }));

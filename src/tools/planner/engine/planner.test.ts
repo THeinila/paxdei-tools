@@ -128,6 +128,36 @@ describe("plan", () => {
     expect(p.warnings.some((w) => /cycle/i.test(w))).toBe(true);
   });
 
+  it("PLAN-7: keeps a step for every item in the cycle", () => {
+    const p = plan(fixture(), [{ itemId: "cyc_a", quantity: 1 }]);
+    expect(p.crafts.map((c) => c.itemId).sort()).toEqual(["cyc_a", "cyc_b"]);
+  });
+
+  it("OWN-3: a covered raw row keeps its full demand as its quantity", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { wood: 20 } });
+    expect(p.gather.find((g) => g.itemId === "wood")).toEqual({ itemId: "wood", needed: 8, satisfied: true });
+  });
+
+  it("OWN-4: a fully owned intermediate has 0 crafts", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { plank: 4 } });
+    expect(p.crafts.find((c) => c.itemId === "plank")).toMatchObject({ satisfied: true, crafts: 0, produced: 0 });
+  });
+
+  it("ALT-2: uses the chosen variant's yield and profession", () => {
+    const ds = fixture();
+    ds.recipes.charcoal!.variants[1]!.profession = "Charcoal Burning";
+    const p = plan(ds, [{ itemId: "charcoal", quantity: 150 }], {
+      pathChoices: { charcoal: "r_charcoal_heartwood" },
+    });
+    expect(p.crafts.find((c) => c.itemId === "charcoal")).toMatchObject({
+      recipeId: "r_charcoal_heartwood",
+      yield: 100,
+      crafts: 2,
+      profession: "Charcoal Burning",
+    });
+    expect(gatherMap(p)).toEqual({ heartwood: 200 });
+  });
+
   it("PLAN-8: merges a target that is also another target's ingredient into one step", () => {
     // table needs plank x4; plank is also a target in its own right
     const p = plan(fixture(), [
