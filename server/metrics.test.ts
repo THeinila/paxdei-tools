@@ -159,5 +159,5 @@ describe("stats contents and cost", () => {
       vi.useRealTimers();
       vi.restoreAllMocks();
     }
-  });
+  }, 30_000); // 50,001 visitor writes: ~2 s alone, ~6 s with the whole suite running in parallel
 });
