@@ -13,13 +13,13 @@ const map = (...es: ProgressEntry[]): ProgressMap =>
   Object.fromEntries(es.map((e) => [e.itemId, e]));
 
 describe("mergeProgress", () => {
-  it("takes the server's value when nothing is fenced", () => {
+  it("PRG-10: takes the server's value when nothing is fenced", () => {
     const local = map(entry("iron", 1));
     const merged = mergeProgress([entry("iron", 7)], local, new Map(), 5);
     expect(merged.iron?.qty).toBe(7);
   });
 
-  it("keeps the local value while a write is in flight", () => {
+  it("PRG-12: keeps the local value while a write is in flight", () => {
     const local = map(entry("iron", 10));
     const fences = new Map([["iron", FENCE_IN_FLIGHT]]);
     // Even a very recent snapshot loses to an in-flight write.
@@ -27,7 +27,7 @@ describe("mergeProgress", () => {
     expect(merged.iron?.qty).toBe(10);
   });
 
-  it("ignores a snapshot issued before the write was acknowledged", () => {
+  it("PRG-11: ignores a snapshot issued before the write was acknowledged", () => {
     // The core race: poll issued at seq 4, our write settled at seq 4, so this
     // snapshot cannot have observed it.
     const local = map(entry("iron", 10));
@@ -36,14 +36,14 @@ describe("mergeProgress", () => {
     expect(merged.iron?.qty).toBe(10);
   });
 
-  it("accepts a snapshot issued after the write was acknowledged", () => {
+  it("PRG-11: accepts a snapshot issued after the write was acknowledged", () => {
     const local = map(entry("iron", 10));
     const fences = new Map([["iron", 4]]);
     const merged = mergeProgress([entry("iron", 25)], local, fences, 5);
     expect(merged.iron?.qty).toBe(25);
   });
 
-  it("lets a collaborator's newer value through once the fence is released", () => {
+  it("PRG-11: lets a collaborator's newer value through once the fence is released", () => {
     // We set 10; Bo then gathered more. A later poll must not be held back just
     // because we were the last local writer.
     const local = map(entry("iron", 10, "ana"));
@@ -53,7 +53,7 @@ describe("mergeProgress", () => {
     expect(merged.iron?.byHandle).toBe("bo");
   });
 
-  it("fences one item without freezing the rest of the map", () => {
+  it("PRG-11: fences one item without freezing the rest of the map", () => {
     const local = map(entry("iron", 10), entry("wood", 1));
     const fences = new Map([["iron", FENCE_IN_FLIGHT]]);
     const merged = mergeProgress([entry("iron", 0), entry("wood", 99)], local, fences, 3);
@@ -61,7 +61,7 @@ describe("mergeProgress", () => {
     expect(merged.wood?.qty).toBe(99); // updated normally
   });
 
-  it("preserves a fenced item the snapshot has never heard of", () => {
+  it("PRG-12: preserves a fenced item the snapshot has never heard of", () => {
     // First ever write for this item: the server row did not exist when the
     // snapshot was built, so the item is simply absent from it.
     const local = map(entry("iron", 10));
@@ -70,7 +70,7 @@ describe("mergeProgress", () => {
     expect(merged.iron?.qty).toBe(10);
   });
 
-  it("drops a local item that is no longer fenced and no longer on the server", () => {
+  it("PRG-10: drops a local item that is no longer fenced and no longer on the server", () => {
     // Someone cleared it; with the fence released we must accept the removal
     // rather than resurrecting our stale copy forever.
     const local = map(entry("iron", 10));
@@ -79,7 +79,7 @@ describe("mergeProgress", () => {
     expect(merged.iron).toBeUndefined();
   });
 
-  it("adds items introduced by other clients", () => {
+  it("PRG-10: adds items introduced by other clients", () => {
     const merged = mergeProgress([entry("stone", 3, "bo")], {}, new Map(), 1);
     expect(merged.stone?.qty).toBe(3);
   });

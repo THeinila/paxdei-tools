@@ -203,6 +203,9 @@ has the most tests to anchor it.
   for Phase 5.
 - A test that maps to no AC gets one of three outcomes: it shows an AC is missing (amend
   the spec), it is redundant (delete it), or it is internal (keep it uncited and list it).
+- **Done 2026-11-03.** 102 of the 110 tests cite ACs; the other 8 are listed with their
+  outcome. The baseline is 71 of 187 ACs passing, 105 gaps for Phase 5, and 11 discrepancies:
+  [factory-adoption-trace-baseline.md](factory-adoption-trace-baseline.md).
 
 ### Phase 5: Fill the gaps, one epic at a time
 - Chunks of about 300 lines, each covering the uncovered ACs of one or two features.

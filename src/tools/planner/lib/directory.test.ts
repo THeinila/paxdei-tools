@@ -32,7 +32,7 @@ const seed = (patch: Partial<ListEntry> = {}): ListEntry => {
 };
 
 describe("setArchived", () => {
-  it("marks a list archived without disturbing its place in the directory", () => {
+  it("LST-8: marks a list archived without disturbing its place in the directory", () => {
     const before = seed();
     const after = setArchived("l1", true)!;
     expect(after.archivedAt).toBeTruthy();
@@ -41,14 +41,14 @@ describe("setArchived", () => {
     expect(after.updatedAt).toBe(before.updatedAt);
   });
 
-  it("restores a list and leaves no archivedAt behind", () => {
+  it("LST-8: restores a list and leaves no archivedAt behind", () => {
     seed({ archivedAt: "2026-02-01T00:00:00.000Z" });
     expect(setArchived("l1", false)!.archivedAt).toBeUndefined();
     const stored = JSON.parse(store[INDEX_KEY]!) as ListEntry[];
     expect("archivedAt" in stored[0]!).toBe(false);
   });
 
-  it("leaves other fields and other lists alone", () => {
+  it("LST-8: leaves other fields and other lists alone", () => {
     seed();
     store[INDEX_KEY] = JSON.stringify([
       ...(JSON.parse(store[INDEX_KEY]!) as ListEntry[]),

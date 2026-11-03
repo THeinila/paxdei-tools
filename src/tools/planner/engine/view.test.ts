@@ -24,7 +24,7 @@ const idsIn = (vm: ReturnType<typeof buildPlanView>, key: string) =>
   vm.sections.find((s) => s.key === key)?.rows.map((r) => r.itemId);
 
 describe("buildPlanView presets", () => {
-  it("groups by tier, deepest first, with gather leading", () => {
+  it("LAY-1: groups by tier, deepest first, with gather leading", () => {
     const vm = buildPlanView(tablePlan(), fixture().items, prefs());
     expect(keys(vm)).toEqual(["gather", "craft:tier:1", "craft:tier:0"]);
     expect(idsIn(vm, "craft:tier:1")).toEqual(["nail", "plank"]);
@@ -33,14 +33,14 @@ describe("buildPlanView presets", () => {
     expect(vm.sections[1]!.heading).toBe("Components · Tier 1");
   });
 
-  it("flat keeps the engine's dependency-first order in one section", () => {
+  it("LAY-2: flat keeps the engine's dependency-first order in one section", () => {
     const p = tablePlan();
     const vm = buildPlanView(p, fixture().items, prefs({ preset: "flat" }));
     expect(keys(vm)).toEqual(["gather", "craft:all"]);
     expect(idsIn(vm, "craft:all")).toEqual(p.crafts.map((c) => c.itemId));
   });
 
-  it("groups by profession, unknown last, deepest tier first within a station", () => {
+  it("LAY-3: groups by profession, unknown last, deepest tier first within a station", () => {
     const ds = fixture();
     ds.recipes.plank!.variants[0]!.profession = "Carpentry";
     ds.recipes.nail!.variants[0]!.profession = "Smithing";
@@ -55,7 +55,7 @@ describe("buildPlanView presets", () => {
     expect(idsIn(vm, "craft:prof:Carpentry")).toEqual(["plank"]);
   });
 
-  it("renders an identical gather section under every preset", () => {
+  it("LAY-4: renders an identical gather section under every preset", () => {
     const p = tablePlan();
     const gathers = PRESETS.map((preset: PresetId) => {
       const vm = buildPlanView(p, fixture().items, prefs({ preset }));
@@ -84,7 +84,7 @@ describe("buildPlanView hideCompleted", () => {
   // owned plank x4 satisfies plank and prunes its whole wood sub-tree.
   const p = () => tablePlan({ plank: 4 });
 
-  it("drops satisfied rows, counts them, and removes emptied sections", () => {
+  it("LAY-5: drops satisfied rows, counts them, and removes emptied sections", () => {
     const shown = buildPlanView(p(), fixture().items, prefs());
     const hidden = buildPlanView(p(), fixture().items, prefs({ hideCompleted: true }));
 
@@ -97,12 +97,12 @@ describe("buildPlanView hideCompleted", () => {
     expect(shown.totals.hiddenCount).toBe(0);
   });
 
-  it("keeps `remaining` counting the section's real outstanding work", () => {
+  it("LAY-4: keeps `remaining` counting the section's real outstanding work", () => {
     const hidden = buildPlanView(p(), fixture().items, prefs({ hideCompleted: true }));
     expect(hidden.sections.find((s) => s.key === "craft:tier:1")!.remaining).toBe(1);
   });
 
-  it("does not change ready flags", () => {
+  it("RDY-6: does not change ready flags", () => {
     const flags = (hideCompleted: boolean) =>
       buildPlanView(p(), fixture().items, prefs({ hideCompleted }))
         .sections.flatMap((s) => s.rows)
@@ -114,7 +114,7 @@ describe("buildPlanView hideCompleted", () => {
 });
 
 describe("buildPlanView collapsed", () => {
-  it("flags the section but still builds its rows", () => {
+  it("LAY-6: flags the section but still builds its rows", () => {
     const vm = buildPlanView(tablePlan(), fixture().items, prefs({ collapsed: ["craft:tier:1"] }));
     const tier1 = vm.sections.find((s) => s.key === "craft:tier:1")!;
     expect(tier1.collapsed).toBe(true);
@@ -124,17 +124,17 @@ describe("buildPlanView collapsed", () => {
 });
 
 describe("computeReady", () => {
-  it("marks steps whose sub-crafts are all done", () => {
+  it("RDY-1, RDY-2: marks steps whose sub-crafts are all done", () => {
     const p = tablePlan();
     expect([...computeReady(p.crafts)].sort()).toEqual(["nail", "plank"]);
   });
 
-  it("promotes the consumer once its ingredients are owned", () => {
+  it("RDY-3, RDY-4: promotes the consumer once its ingredients are owned", () => {
     const p = tablePlan({ plank: 4, nail: 10 });
     expect([...computeReady(p.crafts)]).toEqual(["table"]);
   });
 
-  it("marks nothing inside a cycle, and terminates", () => {
+  it("RDY-5: marks nothing inside a cycle, and terminates", () => {
     const p = plan(fixture(), [{ itemId: "cyc_a", quantity: 1 }]);
     expect([...computeReady(p.crafts)]).toEqual([]);
   });
@@ -145,28 +145,28 @@ describe("computeReady", () => {
     expect([...computeReady(p.crafts, rawIds)]).toEqual([]);
   });
 
-  it("treats a craft with only raw ingredients as ready by default", () => {
+  it("RDY-1: treats a craft with only raw ingredients as ready by default", () => {
     const p = plan(fixture(), [{ itemId: "plank", quantity: 3 }]);
     expect([...computeReady(p.crafts)]).toEqual(["plank"]);
   });
 });
 
 describe("stacksFor / formatStacks", () => {
-  it("returns null when there's nothing useful to say", () => {
+  it("RDY-8: returns null when there's nothing useful to say", () => {
     expect(stacksFor(500, null)).toBeNull();
     expect(stacksFor(500, 1)).toBeNull();
     expect(stacksFor(80, 100)).toBeNull();
     expect(stacksFor(100, 100)).toBeNull();
   });
 
-  it("breaks an amount into stacks", () => {
+  it("RDY-7: breaks an amount into stacks", () => {
     expect(stacksFor(250, 100)).toEqual({ size: 100, full: 2, remainder: 50 });
     expect(formatStacks(stacksFor(250, 100)!)).toBe("2 stacks + 50");
     expect(formatStacks(stacksFor(300, 100)!)).toBe("3 stacks");
     expect(formatStacks(stacksFor(120, 100)!)).toBe("1 stack + 20");
   });
 
-  it("reaches rows through the injected item map", () => {
+  it("RDY-7: reaches rows through the injected item map", () => {
     const ds = fixture();
     ds.items.wood = item("wood", true, 100);
     const vm = buildPlanView(
@@ -181,7 +181,7 @@ describe("stacksFor / formatStacks", () => {
 });
 
 describe("row derivation", () => {
-  it("carries the craft meta the UI and the export both need", () => {
+  it("PLAN-3: carries the craft meta the UI and the export both need", () => {
     const ds = fixture();
     ds.items.deluxe = item("deluxe", false);
     ds.recipes.deluxe = {

@@ -37,7 +37,7 @@ async function getStats() {
 }
 
 describe("unique visitors", () => {
-  it("counts distinct clients once each, however many requests they make", async () => {
+  it("MET-1: counts distinct clients once each, however many requests they make", async () => {
     await app.request("/", asClient("1.2.3.4"));
     await app.request("/", asClient("1.2.3.4"));
     await app.request("/api/lists/nope", asClient("1.2.3.4"));
@@ -48,7 +48,7 @@ describe("unique visitors", () => {
     expect(stats.visitors.activeToday).toBe(2);
   });
 
-  it("stores a hash, never the raw client IP", async () => {
+  it("MET-2: stores a hash, never the raw client IP", async () => {
     await app.request("/", asClient("203.0.113.99"));
     const rows = db.prepare(`SELECT hash FROM visitors`).all() as { hash: string }[];
     expect(rows).toHaveLength(1);
@@ -56,7 +56,7 @@ describe("unique visitors", () => {
     expect(rows[0]!.hash).not.toContain("203.0.113.99");
   });
 
-  it("gives the same client the same hash across restarts (pepper persists)", async () => {
+  it("MET-3: gives the same client the same hash across restarts (pepper persists)", async () => {
     await app.request("/", asClient("1.2.3.4"));
     // Simulate a restart: a fresh middleware instance on the same DB.
     const app2 = new Hono();
@@ -68,7 +68,7 @@ describe("unique visitors", () => {
     expect(n).toBe(1);
   });
 
-  it("does not count stats polls as visits", async () => {
+  it("MET-8: does not count stats polls as visits", async () => {
     await getStats();
     const stats = await getStats();
     expect(stats.visitors.total).toBe(0);
@@ -76,7 +76,7 @@ describe("unique visitors", () => {
 });
 
 describe("event counters", () => {
-  it("counts list creations", async () => {
+  it("MET-4: counts list creations", async () => {
     const create = () =>
       app.request("/api/lists", {
         method: "POST",
@@ -91,7 +91,7 @@ describe("event counters", () => {
     expect(stats.lists.live).toBe(2);
   });
 
-  it("aggregates arbitrary named events by day", async () => {
+  it("MET-4: aggregates arbitrary named events by day", async () => {
     bumpMetric(db, "list_deleted");
     bumpMetric(db, "list_deleted");
     const stats = await getStats();
@@ -100,14 +100,14 @@ describe("event counters", () => {
 });
 
 describe("stats endpoint access", () => {
-  it("404s when no token is configured (fail closed)", async () => {
+  it("MET-5: 404s when no token is configured (fail closed)", async () => {
     const bare = new Hono();
     bare.route("/api", createStatsRouter(db));
     const res = await bare.request("/api/stats");
     expect(res.status).toBe(404);
   });
 
-  it("401s a missing or wrong token", async () => {
+  it("MET-6: 401s a missing or wrong token", async () => {
     expect((await app.request("/api/stats")).status).toBe(401);
     const wrong = await app.request("/api/stats", {
       headers: { authorization: "Bearer wrong" },

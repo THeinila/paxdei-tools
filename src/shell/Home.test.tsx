@@ -8,7 +8,7 @@ import Home from "./Home.tsx";
 afterEach(cleanup);
 
 describe("Home", () => {
-  it("links a card to every registered tool, with its version", () => {
+  it("SHL-1: links a card to every registered tool, with its version", () => {
     render(
       <MemoryRouter>
         <Home />

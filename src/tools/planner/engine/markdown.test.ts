@@ -15,7 +15,7 @@ function md(patch: Partial<ViewPrefs> = {}, owned: Record<string, number> = {}, 
 }
 
 describe("planToMarkdown", () => {
-  it("renders the whole plan as a checklist", () => {
+  it("MDX-1, MDX-2, MDX-3: renders the whole plan as a checklist", () => {
     expect(md()).toBe(
       [
         "# Anvil set",
@@ -42,7 +42,7 @@ describe("planToMarkdown", () => {
     );
   });
 
-  it("checks off satisfied rows and notes what was hidden", () => {
+  it("MDX-4, MDX-5: checks off satisfied rows and notes what was hidden", () => {
     const shown = md({}, { plank: 4 });
     expect(shown).toContain("- [x] plank ×4 — have enough");
     expect(shown).toContain("- [x] wood ×8");
@@ -53,16 +53,16 @@ describe("planToMarkdown", () => {
     expect(hidden).toContain("_2 completed items hidden._");
   });
 
-  it("follows the chosen preset", () => {
+  it("MDX-5: follows the chosen preset", () => {
     expect(md({ preset: "flat" })).toContain("## Craft (3)");
     expect(md({ preset: "flat" })).not.toContain("Components · Tier");
   });
 
-  it("exports a collapsed section's rows anyway", () => {
+  it("MDX-6: exports a collapsed section's rows anyway", () => {
     expect(md({ collapsed: ["craft:tier:1"] })).toContain("- [ ] plank ×4");
   });
 
-  it("includes stack counts and the share link", () => {
+  it("MDX-3, MDX-7: includes stack counts and the share link", () => {
     const out = md({}, {}, "https://example.test/planner/tok");
     expect(out).toContain("Made with the Pax Dei Crafting Planner · https://example.test/planner/tok");
 
@@ -77,7 +77,7 @@ describe("planToMarkdown", () => {
     expect(big).toContain("- [ ] wood ×240 — 2 stacks + 40");
   });
 
-  it("falls back to a name for an untitled list", () => {
+  it("MDX-8: falls back to a name for an untitled list", () => {
     const ds = fixture();
     const vm = buildPlanView(plan(ds, [{ itemId: "wood", quantity: 1 }]), ds.items, prefs());
     expect(planToMarkdown(vm, { listName: "" }).startsWith("# Untitled\n")).toBe(true);
