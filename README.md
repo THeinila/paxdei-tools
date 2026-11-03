@@ -1,140 +1,80 @@
 # Pax Dei Tools
 
-A suite of tools for the MMO **Pax Dei**. The first is the **Crafting Planner**,
-an FFXIV Teamcraft-style crafting & gathering planner.
-Search items, add them to a list, and get a flattened plan of every raw material
-to gather and intermediate craft to make — with totals aggregated across targets
-and the stock you already own subtracted at every step.
+A suite of fan-made tools for the MMO **Pax Dei**. The first is the **Crafting Planner**,
+an FFXIV Teamcraft-style crafting and gathering planner: search items, add them to a
+list, and get a flattened plan of every raw material to gather and every intermediate to
+craft, with totals aggregated across targets and what you already have subtracted at
+every step. Share a list's link and a group can divide the work, seeing each other's
+progress.
 
-The planner runs **fully self-standing** out of the box — game data is bundled and
-all icons are served locally, so the single-user flow makes no external requests at
-runtime. An optional **share backend** (Node + SQLite) lets a group open one link
-and divide the gathering/crafting, tracking each other's progress in near-real-time.
+Game data is bundled and every icon is served from the same origin, so the app makes no
+requests to other sites at runtime. Lists live on a small Node + SQLite backend and are
+addressed by a secret link; there are no accounts.
 
 ## Features
 
-- **Search** the full item catalog and add targets with a chosen quantity.
-- **Flattened plan** rolling up every intermediate craft and raw material, with
-  totals aggregated across all targets.
-- **Tiered craft view** — final products at the bottom, their ingredients above,
-  sub-materials above those; a component used at several depths shows once in its
-  deepest tier. Sorted by profession within each tier.
-- **Owned-stock subtraction** — enter what you already have (raw or intermediate)
-  and the plan prunes it, sub-trees included.
-- **Alternative paths** — pick between recipes with genuinely different inputs
-  (e.g. Charcoal from Sapwood vs Heartwood).
-- **Layout presets** — view the plan tiered, flat (dependency order), or grouped by
-  profession; hide completed rows and collapse any section. Remembered per list, per
-  browser, so collaborators each keep their own view.
-- **Ready badges** on craft steps nothing unfinished blocks, and **stack counts** on any
-  amount over one inventory stack.
-- **Copy as Markdown** — the plan as a tick-box checklist for Discord.
-- **Gather guidance** — per-material link to its gaming.tools source page.
-- **List management** — named lists, duplicate, archive, and a one-item quick list.
-- **Sharing & collaboration** — hit **Share** to push the list to the backend and
-  copy a secret link. Anyone with the link sets a display name and helps gather/craft;
-  progress (a per-item "have" count) is shared, attributed, and synced by polling.
+Each feature has a spec with numbered acceptance criteria, and every criterion has a
+passing test that cites it.
+
+| Area | Specs |
+|---|---|
+| The plan | [plan-engine](docs/features/plan-engine/spec.md) · [owned-stock](docs/features/owned-stock/spec.md) · [alternative-paths](docs/features/alternative-paths/spec.md) · [plan-layouts](docs/features/plan-layouts/spec.md) · [ready-and-stacks](docs/features/ready-and-stacks/spec.md) · [markdown-export](docs/features/markdown-export/spec.md) · [recipe-tooltip](docs/features/recipe-tooltip/spec.md) · [item-search](docs/features/item-search/spec.md) |
+| Lists and sharing | [share-link](docs/features/share-link/spec.md) · [list-management](docs/features/list-management/spec.md) · [shared-progress](docs/features/shared-progress/spec.md) · [definition-edits](docs/features/definition-edits/spec.md) · [list-retention](docs/features/list-retention/spec.md) |
+| The site and server | [tool-suite-shell](docs/features/tool-suite-shell/spec.md) · [serving](docs/features/serving/spec.md) · [abuse-limits](docs/features/abuse-limits/spec.md) · [usage-metrics](docs/features/usage-metrics/spec.md) |
+| Game data | [game-data-pipeline](docs/features/game-data-pipeline/spec.md) |
+
+What's planned is in the [roadmap epic](docs/epics/roadmap/epic.md).
 
 ## Quick start
 
 ```bash
 npm install
-npm run data      # fetch + normalize game data, download icons (build artifacts)
-npm run dev       # http://localhost:5173  (single-user, no backend)
+npm run data      # fetch + normalise game data, download icons
+npm run dev:all   # Vite on 5173 + the list API on 8787; Vite proxies /api
 ```
 
-To use sharing, run the frontend and the share backend together:
+Open http://localhost:5173. `npm run dev` alone serves the frontend, but lists need the
+API.
 
-```bash
-npm run dev:all   # Vite (5173) + share API (8787); Vite proxies /api to the API
-```
-
-`npm run data` regenerates the data artifacts:
-- `data/dataset.json` — normalized items + recipes (**committed**; generated, never hand-edited)
-- `public/icons/` — item icons (gitignored build artifact; regenerate with `npm run fetch:icons`)
-
-See [scripts/README.md](scripts/README.md) for the pipeline details, the
-normalization rules, and how to update or curate the game data.
+`npm run data` regenerates `data/dataset.json` (committed; generated, never hand-edited)
+and `public/icons/` (git-ignored). See [scripts/README.md](scripts/README.md) for the
+pipeline and its rules.
 
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `npm run dev` | Vite dev server (single-user) |
-| `npm run server` | Share backend (Hono + SQLite) on port 8787 |
-| `npm run dev:all` | Frontend + backend together (sharing enabled) |
-| `npm run build` | Production build to `dist/` |
-| `npm start` | Serve the built SPA **and** the API from one origin (compiled server) |
-| `npm run build:server` | Compile the backend to `dist-server/` (esbuild) |
-| `npm test` | Recipe-engine + backend tests (vitest) |
+| `npm run dev:all` | Frontend and API together |
+| `npm run dev` / `npm run server` | Frontend only / API only (port 8787) |
+| `npm run build` | Production build: `dist/` (Vite) and `dist-server/` (esbuild) |
+| `npm start` | Serve the built SPA and the API from one origin |
+| `npm test` | All tests (Vitest) |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run data` | Full data pipeline (fetch → normalize → icons) |
-| `npm run fetch:raw` | Download + rehydrate the devalue recipe data |
-| `npm run build:dataset` | Normalize raw data → `data/dataset.json` |
-| `npm run fetch:icons` | Download item icons → `public/icons/` |
+| `npm run test:report` | Tests, plus `.factory/vitest.json` for the AC trace |
+| `npm run data` | The whole data pipeline (`fetch:raw` → `build:dataset` → `fetch:icons`) |
+| `npm run check:dataset` | Rebuild the dataset in memory and compare it with the committed one |
 
-## Architecture
+## Documentation
 
-The site is a multi-tool suite. A shared shell provides the header/nav and a
-landing page; each tool is a self-contained module under `src/tools/<tool>/`.
-
-- **`src/shell/`** — site chrome: `AppShell.tsx` (header + nav + footer with an
-  `<Outlet/>`) and `Home.tsx` (the tool-directory landing page).
-- **`src/tools/registry.tsx`** — the single source of truth listing every tool;
-  both the routing table (`src/routes.tsx`) and the landing page are generated
-  from it. Adding a tool is one registry entry plus its component.
-- **`src/tools/planner/`** — the Crafting Planner (the first tool):
-  - **`engine/`** — pure-TS recipe engine (`planner.ts`): tree flattening,
-    owned-stock subtraction, dependency-tier assignment, alternative-path
-    selection, cycle guard. Unit-tested.
-  - **`components/`, `lib/`** — React UI (search, crafting list, plan view). The
-    ~1.5 MB item dataset is a lazily loaded, separately-hashed chunk
-    (`loadDataset()` in `lib/data.ts`), so the shell and landing page never pay
-    for it and a code-only deploy leaves the cached copy valid.
-    `useList` runs in two modes: local (localStorage) or shared (server-backed,
-    polled). The shared "have" map is fed into the engine exactly as owned stock.
-- **`server/`** — share backend (Hono + better-sqlite3). Two concurrency strategies:
-  progress writes are atomic additive deltas (`qty = qty + delta`, no lost updates);
-  list-definition edits are version-guarded (optimistic concurrency → 409 + rebase).
-  The planner's routes live under `/api/lists*`; future tools mount their own
-  routers under `/api/<tool>/…`. Shared lists are swept after
-  `LIST_TTL_DAYS` (default 90) with no writes (`server/retention.ts`) — without
-  that, the unauthenticated create endpoint was an unbounded-growth path.
-  `GET /healthz` is a liveness probe for uptime checks and the deploy script. Also collects **privacy-preserving usage metrics**
-  (`server/metrics.ts`): aggregate daily event counters and unique visitors via an
-  HMAC-hashed client IP — no cookies, no client-side tracking code, raw IPs never
-  stored. Aggregates are served at `GET /api/stats` only when a `STATS_TOKEN` env
-  var is set (bearer auth); unset, the route 404s.
-- **`scripts/`** — re-runnable data pipeline (fetch → normalize → icons); see
-  [scripts/README.md](scripts/README.md). `build-server.mjs` compiles the backend
-  for production so nothing on the start path comes from devDependencies.
-- **`deploy/`** — the production runbook ([DEPLOY.md](deploy/DEPLOY.md)), an
-  atomic release-and-rollback script, a database backup script, the Caddy config
-  and the systemd unit. The host is a 1/8-OCPU / 1 GB free-tier VM, and
-  [docs/CAPACITY.md](docs/CAPACITY.md) records what that budget implies for every
-  tuning constant in the serving path.
-
-Several features are modelled on FFXIV Teamcraft; see
-[docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md) for the feature comparison and
-what's still worth borrowing.
-
-Recipe data is sourced from [paxdei.gaming.tools](https://paxdei.gaming.tools/)
-(a single devalue-encoded `recipes.d.json` on their CDN). Fan project; not
-affiliated with Mainframe Industries.
-
-## Status
-
-**v1.0** — the single-user planner plus sharing & collaboration (lightweight handles,
-share links, progress check-off, near-real-time polling) on a local Node + SQLite
-backend. See [SPRINT_PLAN.md](SPRINT_PLAN.md) for the backlog of upcoming features.
+- [docs/architecture.md](docs/architecture.md): how the system fits together, with the
+  decision records in [docs/adr/](docs/adr/).
+- [docs/CAPACITY.md](docs/CAPACITY.md): what the 1/8-OCPU production host can carry, and
+  why each tuning constant is set the way it is.
+- [deploy/DEPLOY.md](deploy/DEPLOY.md) and [RELEASING.md](RELEASING.md): deploying and
+  cutting releases.
+- [CHANGELOG.md](CHANGELOG.md): the technical history. Players see the plain-language
+  What's New page instead, driven by `src/shell/releases.ts`.
+- [CLAUDE.md](CLAUDE.md): the conventions and the spec → test workflow
+  ([code-factory](docs/factory-adoption-plan.md)).
+- [docs/research/teamcraft-analysis.md](docs/research/teamcraft-analysis.md): what was
+  borrowed from FFXIV Teamcraft, and what's still worth borrowing.
 
 ## Versioning
 
-The suite carries two independent versions: a **toolkit** release-train version
-(`package.json`, shown in the footer and git-tagged) and a **per-tool** version (in
-`src/tools/registry.tsx`, shown as a badge on each tool).
+There are two independent versions: the **toolkit** release train (`package.json`, shown
+in the footer and git-tagged) and a **per-tool** version (`src/tools/registry.tsx`, shown
+on each tool's badge). See [ADR 0015](docs/adr/0015-keep-a-toolkit-version-and-a-per-tool-version.md)
+and [RELEASING.md](RELEASING.md).
 
-Release history lives in two places for two audiences: [CHANGELOG.md](CHANGELOG.md) is
-the technical record, while `src/shell/releases.ts` drives the plain-language **What's
-New** page users see in the app. See [RELEASING.md](RELEASING.md) for how releases are
-cut and how to keep both in sync.
+Recipe data comes from [paxdei.gaming.tools](https://paxdei.gaming.tools/). Fan project;
+not affiliated with Mainframe Industries.

@@ -11,15 +11,17 @@ This repo uses the code-factory plugins (`C:\Users\Toni\claude-projects\code-fac
 New features go through `/workflow:start`: approved spec → chunk plan → test-first
 implementation → review → local PR draft.
 
-Adoption is in progress: [docs/factory-adoption-plan.md](docs/factory-adoption-plan.md).
-Until it's finished, existing features may not have specs yet. During the backfill:
-- Specs describe the behaviour we want. Where the code does something that's wrong, the AC
-  states the correct behaviour, and the spec lists the gap under "Discrepancies with the
-  code". The code is fixed later, through a normal red → green, not during the backfill.
-  Behaviour that's merely surprising is kept and its reasoning is recorded in Open questions.
-- A test for behaviour that already exists needs **mutation red**: break the code under
-  test, watch the test fail for the expected reason, revert, and record
-  `RED(mutation): <file:line change> → <n> failed`.
+Every feature has an Implemented spec, and every AC has a passing test that cites it (the
+adoption record is [docs/factory-adoption-plan.md](docs/factory-adoption-plan.md)). Keep it
+that way:
+- A behaviour change starts with its spec: a new AC, or a changed one, with a changelog line
+  and re-approval. Then a test that fails for the right reason, then the code.
+- A test added for behaviour that already exists can't show a real red. It needs a
+  **mutation red** instead: break the code under test, watch the test fail for the expected
+  reason, revert, and record `RED(mutation): <file:line change> → <n> failed` in the commit.
+- If you find the code disagreeing with an approved spec, don't fix it in passing. Record it
+  under the spec's "Discrepancies with the code" and fix it as its own `fix(<KEY>)` change.
+- `trace.mjs --report` must pass before a merge to `main`.
 
 ## Layout
 
