@@ -41,8 +41,9 @@ Until it's finished, existing features may not have specs yet. During the backfi
 - Data-pipeline tests cover pure functions only. They never touch the network.
 - Mock only at boundaries we don't own (`fetch`, timers, `window.prompt`, clipboard), and
   browser layout that jsdom lacks (`getBoundingClientRect`, viewport size). The one exception
-  is test data: planner component tests replace `data/dataset.json` with the engine fixture,
-  using `datasetModule()` from `engine/testFixtures.ts`, so they don't change with game data.
+  is data modules, swapped for test data: `data/dataset.json` (use `datasetModule()` from
+  `engine/testFixtures.ts`) and `src/shell/releases.ts`, so tests don't change when the game
+  data or the release notes do.
 
 ## Commands
 
