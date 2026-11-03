@@ -1,8 +1,8 @@
 /** Metrics tests against an in-memory SQLite DB. Focus: privacy invariants
  * (no raw IP anywhere, stats gated by token) and correct counting (visitor
  * dedup, list_created events). */
-import { beforeEach, describe, expect, it } from "vitest";
-import { Hono } from "hono";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Hono, type Context } from "hono";
 import { openDb, type DB } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
 import { bumpMetric, createStatsRouter, visitorTracking } from "./metrics.ts";
@@ -113,5 +113,51 @@ describe("stats endpoint access", () => {
       headers: { authorization: "Bearer wrong" },
     });
     expect(wrong.status).toBe(401);
+  });
+});
+
+describe("stats contents and cost", () => {
+  it("MET-7: stats return aggregates only, with no hashes, tokens or list contents", async () => {
+    const created = await app.request("/api/lists", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": "203.0.113.9" },
+      body: JSON.stringify({ state: { name: "Secret plan", targets: [] } }),
+    });
+    const { token } = (await created.json()) as { token: string };
+    const res = await app.request("/api/stats", { headers: { authorization: `Bearer ${STATS_TOKEN}` } });
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(Object.keys(body).sort()).toEqual(["counters", "countersByDay", "generatedAt", "lists", "visitors"]);
+    expect(body.lists).toEqual({ live: 1 });
+    expect(body.counters).toEqual({ list_created: 1 });
+    expect(body.visitors).toMatchObject({ total: 1, activeToday: 1 });
+
+    const text = JSON.stringify(body);
+    const hash = (db.prepare("SELECT hash FROM visitors").get() as { hash: string }).hash;
+    for (const secret of [hash, token, "Secret plan", "203.0.113.9", STATS_TOKEN]) expect(text).not.toContain(secret);
+  });
+
+  it("MET-N1: a client costs at most one database write a day for visitor tracking", async () => {
+    const changes = () => (db.prepare("SELECT total_changes() AS n").get() as { n: number }).n;
+    await app.request("/", asClient("198.51.100.1"));
+    const after = changes();
+    for (let i = 0; i < 20; i++) await app.request("/", asClient("198.51.100.1"));
+    expect(changes()).toBe(after);
+  });
+
+  it("MET-N1: the in-memory seen-today record is trimmed above 50,000 clients", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-03T10:00:00Z"), toFake: ["Date"] });
+    try {
+      const mw = visitorTracking(db);
+      const ctx = (ip: string) => ({ req: { path: "/", header: () => ip }, env: {} }) as unknown as Context;
+      const next = async () => {};
+      for (let i = 0; i <= 50_000; i++) await mw(ctx(`10.${i >> 16}.${(i >> 8) & 255}.${i & 255}`), next);
+      vi.setSystemTime(new Date("2026-11-04T10:00:00Z")); // a new day: yesterday's entries are stale
+      const deleted = vi.spyOn(Map.prototype, "delete");
+      await mw(ctx("192.0.2.200"), next);
+      expect(deleted.mock.calls.length).toBeGreaterThanOrEqual(50_001);
+    } finally {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    }
   });
 });
