@@ -224,6 +224,11 @@ has the most tests to anchor it.
   majors.
 - Partial coverage: for each AC that the baseline already shows as covered, check its
   clauses against its tests, and add tests for any clause that's missing.
+- **Done 2026-11-03.** 176 of 188 ACs have passing tests; the other 12 are exactly the
+  discrepancies for Phase 5b. Every new test has mutation-red evidence in its commit message,
+  and each epic had a code review whose fixes are committed. Production code changed only in
+  three refactors with no behaviour change, each in its own commit: `server/app.ts`
+  (createApp), `scripts/datasetRules.ts`, `scripts/iconPlan.ts`.
 
 ### Phase 5b: Discrepancy tests and fixes
 The 12 ACs where the spec and the code disagree are PLAN-10, OWN-8, MDX-10, SRCH-4, SHR-5,
