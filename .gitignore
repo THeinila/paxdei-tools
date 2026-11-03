@@ -10,3 +10,5 @@ public/icons/
 server/data.sqlite
 server/data.sqlite-wal
 server/data.sqlite-shm
+# code-factory working files: trace reports, implementer reports, PR drafts.
+.factory/
