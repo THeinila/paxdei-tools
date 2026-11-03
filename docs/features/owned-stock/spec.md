@@ -76,12 +76,9 @@ None.
 ## Open questions
 None.
 
-## Discrepancies with the code
-- OWN-8: `OwnedInput` passes fractions through. The plan briefly uses 2.7, and the server
-  then truncates the delta, so the shown and saved values can differ until the next poll.
-  Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
 - 2026-11-03 — OWN-8 now rounds fractions down (settled as-built question; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — OWN-8 fixed in the code (Phase 5b); discrepancy closed

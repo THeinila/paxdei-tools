@@ -81,10 +81,9 @@ None.
 ## Open questions
 None.
 
-## Discrepancies with the code
-- MDX-10: `copyMarkdown` swallows the error, and the button doesn't change. Fix pending.
 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `markdown.test.ts`)
 - 2026-11-03 — MDX-10 added: a failed copy is reported (settled as-built question; the code still differs)
 - 2026-11-03 — approved
+- 2026-11-03 — MDX-10 fixed in the code (Phase 5b); discrepancy closed

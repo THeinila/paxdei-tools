@@ -31,10 +31,12 @@ function Harness({
   targets,
   owned = {},
   initialPrefs = {},
+  setOwned = () => {},
 }: {
   targets: Target[];
   owned?: Record<string, number>;
   initialPrefs?: Partial<ViewPrefs>;
+  setOwned?: (itemId: string, qty: number) => void;
 }) {
   const [prefs, setPrefs] = useState<ViewPrefs>({ ...DEFAULT_PREFS, ...initialPrefs });
   return (
@@ -47,7 +49,7 @@ function Harness({
       onPrefsChange={(patch) => setPrefs((p) => ({ ...p, ...patch }))}
       listName="My list"
       shareUrl="https://example.test/planner/tok"
-      setOwned={() => {}}
+      setOwned={setOwned}
       setPathChoice={() => {}}
     />
   );
@@ -184,6 +186,34 @@ describe("PlanView", () => {
       "https://paxdei.gaming.tools/materials/wood",
     );
     expect(within(rowFor("plank")).queryByRole("link", { name: "where?" })).toBeNull();
+  });
+
+  it("PLAN-10: the summary counts only tiers with crafts left", () => {
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} owned={{ table: 1 }} />);
+    expect(document.querySelector(".summary")!.textContent).toContain("0 crafts in 0 tiers");
+  });
+
+  it("OWN-8: have amounts are whole numbers, at least 0", () => {
+    const setOwned = vi.fn();
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} setOwned={setOwned} />);
+    const input = within(rowFor("wood")).getByLabelText(/have/);
+    for (const [entered, saved] of [["2.7", 2], ["-1", 0], ["", 0], ["5", 5]] as const) {
+      fireEvent.change(input, { target: { value: entered } });
+      expect(setOwned).toHaveBeenLastCalledWith("wood", saved);
+    }
+  });
+
+  it("MDX-10: a failed copy says so for 2 seconds", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockRejectedValue(new Error("NotAllowedError"));
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    render(<Harness targets={[{ itemId: "table", quantity: 1 }]} />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Copy as Markdown" }));
+    });
+    expect(screen.getByRole("button", { name: "Copy failed" })).toBeTruthy();
+    act(() => vi.advanceTimersByTime(2000));
+    expect(screen.getByRole("button", { name: "Copy as Markdown" })).toBeTruthy();
   });
 
   it("MDX-9: the copy button confirms for 2 seconds", async () => {
