@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { migrate, openDb, type DB } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
-import { cutoffFor, sweepLists, ttlDaysFromEnv, DEFAULT_TTL_DAYS } from "./retention.ts";
+import { cutoffFor, startRetention, sweepLists, ttlDaysFromEnv, DEFAULT_TTL_DAYS } from "./retention.ts";
 
 let db: DB;
 beforeEach(() => {
@@ -214,5 +214,70 @@ describe("migration", () => {
       .prepare(`SELECT last_activity_at FROM lists WHERE share_token = 'keep'`)
       .get() as { last_activity_at: string };
     expect(after.last_activity_at).toBe(before.last_activity_at);
+  });
+});
+
+describe("startRetention", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("RET-5: sweeps at start, then every 24 hours", () => {
+    vi.useFakeTimers();
+    seedList("old", 100);
+    const log = vi.fn();
+    const stop = startRetention(db, { ttlDays: 90, log });
+    expect(tokens()).toEqual([]); // swept immediately
+
+    seedList("old2", 100);
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000 - 1);
+    expect(tokens()).toEqual(["old2"]);
+    vi.advanceTimersByTime(1);
+    expect(tokens()).toEqual([]);
+    stop();
+  });
+
+  it("RET-5: a failing sweep is logged and the next one still runs", () => {
+    vi.useFakeTimers();
+    const log = vi.fn();
+    const broken = { prepare: () => { throw new Error("disk I/O error"); } } as unknown as DB;
+    const stop = startRetention(broken, { ttlDays: 90, log });
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+    expect(log.mock.calls.filter(([m]) => String(m).includes("sweep failed: disk I/O error"))).toHaveLength(2);
+    stop();
+  });
+
+  it("RET-6: 0 disables the sweep and says lists are kept forever", () => {
+    seedList("old", 1000);
+    const log = vi.fn();
+    startRetention(db, { ttlDays: 0, log });
+    expect(tokens()).toEqual(["old"]);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("lists are kept forever"));
+  });
+
+  it("RET-7: logs how many lists a sweep removed, and nothing when it removed none", () => {
+    seedList("a", 100);
+    seedList("b", 100);
+    const log = vi.fn();
+    startRetention(db, { ttlDays: 90, log })();
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0]![0]).toMatch(/swept 2 list/);
+    const quiet = vi.fn();
+    startRetention(db, { ttlDays: 90, log: quiet })();
+    expect(quiet).not.toHaveBeenCalled();
+  });
+
+  it("RET-N1: the daily timer doesn't keep the process alive", () => {
+    const unref = vi.fn();
+    const spy = vi.spyOn(globalThis, "setInterval").mockReturnValue({ unref } as unknown as ReturnType<typeof setInterval>);
+    startRetention(db, { ttlDays: 90, log: () => {} });
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), 24 * 60 * 60 * 1000);
+    expect(unref).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("RET-N1: the sweep's activity column is indexed", () => {
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN DELETE FROM lists WHERE last_activity_at < ?`)
+      .all("x") as { detail: string }[];
+    expect(plan.map((r) => r.detail).join(" ")).toMatch(/USING (COVERING )?INDEX idx_lists_last_activity/);
   });
 });
