@@ -114,6 +114,33 @@ describe("list editor", () => {
     expect(listEntries()).toMatchObject([{ shareToken: TOKEN, name: "Guild order", targetCount: 1 }]);
   });
 
+  it("SHR-8: a list that doesn't exist says so, offers removal, and shows no editor", async () => {
+    await openEditor(); // TOKEN was never created on the server
+    expect(screen.getByRole("heading", { name: "This list doesn't exist any more" })).toBeTruthy();
+    expect(screen.getByText(/deleted after 90 days with no changes/)).toBeTruthy();
+    expect(document.querySelector(".tool-title-input")).toBeNull();
+    expect(screen.queryByPlaceholderText("Search items to craft…")).toBeNull();
+    const gets = server.countOf("GET");
+    await settle(30_000);
+    expect(server.countOf("GET")).toBe(gets); // stops polling a list that is gone
+
+    expect(listEntries()).toMatchObject([{ name: "Shared list" }]); // adopted when opened, name untouched
+    fireEvent.click(screen.getByRole("button", { name: "Remove from my lists" }));
+    await settle();
+    expect(listEntries()).toEqual([]);
+    expect(screen.getByText("directory page")).toBeTruthy();
+  });
+
+  it("SHR-8: a list swept while it is open switches to the same page", async () => {
+    server.seed(TOKEN, { name: "Soon gone" });
+    await openEditor();
+    expect(title().value).toBe("Soon gone");
+    server.drop(TOKEN);
+    await settle(12_000);
+    expect(screen.getByRole("heading", { name: "This list doesn't exist any more" })).toBeTruthy();
+    expect(document.querySelector(".tool-title-input")).toBeNull();
+  });
+
   it("SHR-9: a route that is neither a known list nor token-shaped goes back to the directory", async () => {
     await openEditor("/planner/not a token!");
     expect(screen.getByText("directory page")).toBeTruthy();

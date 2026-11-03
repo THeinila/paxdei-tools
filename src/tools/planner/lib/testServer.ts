@@ -129,6 +129,10 @@ export function installFakeServer() {
       return token;
     },
     list: (token: string) => lists.get(token)!,
+    /** Delete a list, as the retention sweep would. */
+    drop(token: string) {
+      lists.delete(token);
+    },
     /** Change server state as if another collaborator had written it. */
     otherClient(token: string, fn: (l: StoredList) => void) {
       const l = lists.get(token)!;
