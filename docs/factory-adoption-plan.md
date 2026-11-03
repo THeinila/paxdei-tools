@@ -219,9 +219,25 @@ has the most tests to anchor it.
   - The data pipeline's pure functions. `build-dataset.ts` and `fetch-icons.ts` may need
     small extractions to make them testable: refactor only, no behaviour change, each in
     its own commit.
-- A fix AC approved in Phase 3 gets a real red → green and a `fix(<KEY>):` commit.
+- Discrepancy ACs are left for Phase 5b.
 - At the end of each epic, run `verify:review-code` on the epic's diff. Fix blockers and
   majors.
+- Partial coverage: for each AC that the baseline already shows as covered, check its
+  clauses against its tests, and add tests for any clause that's missing.
+
+### Phase 5b: Discrepancy tests and fixes
+The 11 ACs where the spec and the code disagree are PLAN-10, OWN-8, MDX-10, SRCH-4, SHR-5,
+SHR-8, LST-6, LST-9, PRG-7, EDT-9 and SRV-5. Each one is listed under its spec's
+"Discrepancies with the code".
+- For each one, write the test first, citing the AC. It must fail against today's code for
+  the reason the discrepancy describes. This is a real red, not a mutation red.
+- Then fix the code until the test passes, with a `fix(<KEY>):` commit for each AC (or each
+  small group), and remove the entry from the spec's discrepancy list.
+- Tests that pin today's behaviour, and that the fix makes wrong, get rewritten in the same
+  commit, for example `view.test.ts` "reports the same tier count…" for PLAN-10.
+- A release follows, because these change app behaviour, unlike the rest of the backfill.
+- **Done when** no spec has a discrepancy entry, and the trace has no uncovered discrepancy
+  ACs.
 
 ### Phase 6: Verify and finish
 - `verification-before-completion`: the full suite, the typecheck, and the trace with

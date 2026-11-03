@@ -127,4 +127,62 @@ describe("plan", () => {
     const p = plan(fixture(), [{ itemId: "cyc_a", quantity: 1 }]);
     expect(p.warnings.some((w) => /cycle/i.test(w))).toBe(true);
   });
+
+  it("PLAN-8: merges a target that is also another target's ingredient into one step", () => {
+    // table needs plank x4; plank is also a target in its own right
+    const p = plan(fixture(), [
+      { itemId: "table", quantity: 1 },
+      { itemId: "plank", quantity: 3 },
+    ]);
+    expect(p.crafts.filter((c) => c.itemId === "plank")).toHaveLength(1);
+    expect(craftMap(p).plank).toEqual({ needed: 7, crafts: 7 });
+    expect(gatherMap(p).wood).toBe(14);
+  });
+
+  it("OWN-2: subtracts a partial have amount from a raw material", () => {
+    const p = plan(fixture(), [{ itemId: "table", quantity: 1 }], { owned: { wood: 3 } });
+    expect(gatherMap(p).wood).toBe(5); // demand 8 - have 3
+    expect(satisfiedIds(p)).not.toContain("wood");
+  });
+
+  it("OWN-6: keeps an ingredient active when only one of its consumers is owned", () => {
+    // Both target orders, so a "zero the owned branch's sub-tree" bug can't hide
+    // behind whichever consumer the engine happens to visit last.
+    for (const targets of [
+      [{ itemId: "table", quantity: 1 }, { itemId: "chair", quantity: 1 }],
+      [{ itemId: "chair", quantity: 1 }, { itemId: "table", quantity: 1 }],
+    ]) {
+      const p = plan(fixture(), targets, { owned: { table: 1 } });
+      expect(satisfiedIds(p)).toContain("table");
+      expect(craftMap(p).plank).toEqual({ needed: 2, crafts: 2 }); // chair's share only
+      expect(craftMap(p).nail).toEqual({ needed: 4, crafts: 1 });
+      expect(gatherMap(p)).toEqual({ wood: 4, iron_ore: 1 });
+    }
+  });
+
+  it("OWN-7: never produces a negative quantity, however much is owned", () => {
+    const p = plan(
+      fixture(),
+      [
+        { itemId: "table", quantity: 1 },
+        { itemId: "chair", quantity: 2 },
+      ],
+      { owned: { wood: 1000, plank: 3, nail: 500, iron_ore: 9, chair: 7 } },
+    );
+    for (const c of p.crafts) {
+      expect(c.needed).toBeGreaterThanOrEqual(0);
+      expect(c.crafts).toBeGreaterThanOrEqual(0);
+      expect(c.produced).toBeGreaterThanOrEqual(0);
+    }
+    for (const g of p.gather) expect(g.needed).toBeGreaterThanOrEqual(0);
+    expect(p.crafts.find((c) => c.itemId === "nail")).toMatchObject({ satisfied: true, crafts: 0 });
+  });
+
+  it("ALT-5: falls back to the first variant when the chosen recipe no longer exists", () => {
+    const p = plan(fixture(), [{ itemId: "charcoal", quantity: 100 }], {
+      pathChoices: { charcoal: "r_charcoal_removed_upstream" },
+    });
+    expect(craftMap(p).charcoal).toEqual({ needed: 100, crafts: 2 });
+    expect(gatherMap(p)).toEqual({ sapwood: 100 });
+  });
 });
