@@ -1,5 +1,5 @@
 # Usage metrics
-Key: MET · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: MET · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As the operator, I want aggregate usage numbers without cookies or stored IPs, so that I know
@@ -90,3 +90,4 @@ unbounded"). Pruning would change what `visitors.total` means, so it needs its o
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `metrics.test.ts`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

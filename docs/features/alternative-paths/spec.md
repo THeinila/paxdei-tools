@@ -1,5 +1,5 @@
 # Alternative recipe paths
-Key: ALT · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: ALT · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to pick between recipes that use different inputs, so that the plan uses
@@ -63,3 +63,4 @@ default keeps existing lists' plans from changing.
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `planner.test.ts`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

@@ -1,5 +1,5 @@
 # Owned stock
-Key: OWN · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: OWN · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to enter what I already have, raw or crafted, so that the plan shows
@@ -81,3 +81,4 @@ None.
 - 2026-11-03 — OWN-8 now rounds fractions down (settled as-built question; the code still differs)
 - 2026-11-03 — approved
 - 2026-11-03 — OWN-8 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

@@ -1,5 +1,5 @@
 # Copy as Markdown
-Key: MDX · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: MDX · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to copy the plan as a Markdown checklist, so that I can paste it into
@@ -86,3 +86,4 @@ None.
 - 2026-11-03 — MDX-10 added: a failed copy is reported (settled as-built question; the code still differs)
 - 2026-11-03 — approved
 - 2026-11-03 — MDX-10 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

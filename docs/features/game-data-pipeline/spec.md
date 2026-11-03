@@ -1,5 +1,5 @@
 # Game data pipeline
-Key: DAT · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: DAT · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a maintainer, I want one command that rebuilds the dataset and icons from upstream with our
@@ -141,3 +141,4 @@ covers the mechanism, and the list's contents may change with the game.
 - 2026-11-03 — created (backfilled from the code and `scripts/README.md`; no existing tests)
 - 2026-11-03 — approved
 - 2026-11-03 — Context updated for the Phase 5 extraction and `check:dataset` (no AC change)
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

@@ -1,5 +1,5 @@
 # Shared progress
-Key: PRG · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: PRG · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a member of a group, I want to record how many of an item I've got and see what others
@@ -126,3 +126,4 @@ amount. The next poll shows the doubled total, and the user can correct it.
 - 2026-11-03 — PRG-7 specifies saving without a name (settled as-built question; the code still differs)
 - 2026-11-03 — approved
 - 2026-11-03 — PRG-7 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

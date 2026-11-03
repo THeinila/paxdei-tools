@@ -1,5 +1,5 @@
 # Share link
-Key: SHR · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: SHR · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want every list to have one link I can copy and send, so that anyone in my
@@ -107,3 +107,4 @@ None.
 - 2026-11-03 — approved
 - 2026-11-03 — SHR-5 fixed in the code (Phase 5b); discrepancy closed
 - 2026-11-03 — SHR-8 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

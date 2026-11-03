@@ -1,5 +1,5 @@
 # Item search
-Key: SRCH · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: SRCH · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to search the item catalogue by name and add an item with a quantity, so
@@ -94,3 +94,4 @@ so that several related items can be added in a row.
 - 2026-11-03 — SRCH-4 now requires readable category labels (settled as-built question; the code still differs)
 - 2026-11-03 — approved
 - 2026-11-03 — SRCH-4 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

@@ -1,5 +1,5 @@
 # Abuse limits
-Key: ABU · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: ABU · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As the operator, I want per-client rate limits and a disk-space floor, so that one client
@@ -104,3 +104,4 @@ None. Settled on 2026-11-03:
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `diskGuard.test.ts`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

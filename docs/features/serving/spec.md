@@ -1,5 +1,5 @@
 # Serving
-Key: SRV · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: SRV · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As the operator, I want the SPA and the API served from one process with correct caching and
@@ -102,3 +102,4 @@ artwork replaced under the same name reaches users within a month.
 - 2026-11-03 — re-approved with SRV-10
 - 2026-11-03 — SRV-5 fixed in the code (Phase 5b); discrepancy closed
 - 2026-11-03 — SRV-10 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

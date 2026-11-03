@@ -1,5 +1,5 @@
 # Plan layouts
-Key: LAY · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: LAY · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to view the plan by tier, in dependency order or by profession, and hide
@@ -97,3 +97,4 @@ None.
 ## Changelog
 - 2026-11-03 — created (backfilled from the code, `view.test.ts` and `prefs.test.ts`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

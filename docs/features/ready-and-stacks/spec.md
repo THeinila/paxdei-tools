@@ -1,5 +1,5 @@
 # Ready badges and stack counts
-Key: RDY · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: RDY · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want to see which crafts I can do right now and how many inventory stacks an
@@ -78,3 +78,4 @@ on a ready badge.
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `view.test.ts`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

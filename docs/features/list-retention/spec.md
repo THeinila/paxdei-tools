@@ -1,5 +1,5 @@
 # List retention
-Key: RET · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: RET · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As the operator, I want lists nobody has changed for 90 days to be deleted, so that
@@ -94,3 +94,4 @@ accepts. An operator who changes the env var changes the constant too
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `retention.test.ts`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

@@ -1,5 +1,5 @@
 # Concurrent definition edits
-Key: EDT · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: EDT · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a member of a group, I want to change the targets, quantities and path choices at the same
@@ -95,3 +95,4 @@ records.
 - 2026-11-03 — EDT-9 adds a confirmation before clearing; EDT-10 keeps have amounts (settled as-built questions; the code still differs on EDT-9)
 - 2026-11-03 — approved
 - 2026-11-03 — EDT-9 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

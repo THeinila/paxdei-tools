@@ -1,5 +1,5 @@
 # List directory
-Key: LST · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: LST · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want a directory of my lists where I can create, rename, duplicate, archive and
@@ -108,3 +108,4 @@ None.
 - 2026-11-03 — approved
 - 2026-11-03 — LST-9 fixed in the code (Phase 5b); discrepancy closed
 - 2026-11-03 — LST-6 fixed in the code (Phase 5b); discrepancy closed
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)

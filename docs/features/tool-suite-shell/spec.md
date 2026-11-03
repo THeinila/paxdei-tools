@@ -1,5 +1,5 @@
 # Tool suite shell
-Key: SHL · Status: Approved · Owner: — · Updated: 2026-11-03
+Key: SHL · Status: Implemented · Owner: — · Updated: 2026-11-03
 
 ## Story
 As a player, I want one site with a landing page and navigation across every tool, so that I
@@ -83,3 +83,4 @@ rather than showing a 404 page. The suite has few routes, and every card is one 
 ## Changelog
 - 2026-11-03 — created (backfilled from the code and `Home.test.tsx`)
 - 2026-11-03 — approved
+- 2026-11-03 — implemented: every AC has a passing test (trace 188/188, adoption Phase 6)
