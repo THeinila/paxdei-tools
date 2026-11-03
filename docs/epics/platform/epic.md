@@ -64,6 +64,13 @@ Draft ACs:
 - Pruning the `visitors` table, and rate-limit state that survives a restart: recorded as risks in [architecture.md](../../architecture.md) §8.
 
 ## Open questions
-- (as-built) ABU: rate-limit buckets live in memory, so a restart, or a crash loop, resets every limit. Specified as is?
-- (as-built) MET-1: the `visitors` table is never pruned. Add a retention AC, or keep it as a known risk?
-- (as-built) SRV-1: icons get a 30-day `max-age` rather than `immutable`, so that replaced artwork reaches users eventually. Confirm that as the requirement.
+None. All four specs were approved on 2026-11-03.
+- Kept as they are, with the reasoning in each spec: in-memory rate-limit budgets (ABU),
+  the unpruned `visitors` table (MET), 30-day icon caching (SRV-2), and redirecting unknown
+  paths home (SHL-6).
+- One behaviour, found during the backfill, is specified differently from the code. It will
+  be fixed later:
+
+| AC | Spec says | Code does |
+|---|---|---|
+| [SRV-5](../../features/serving/spec.md) | An unknown `/api/*` path returns a JSON 404 | `GET` falls through to the SPA fallback and returns `index.html` with 200 |
