@@ -39,7 +39,10 @@ Until it's finished, existing features may not have specs yet. During the backfi
   default `node` environment.
 - Server routes are tested through `app.request()`, not a listening port.
 - Data-pipeline tests cover pure functions only. They never touch the network.
-- Mock only at boundaries we don't own (`fetch`, timers, `window.prompt`, clipboard).
+- Mock only at boundaries we don't own (`fetch`, timers, `window.prompt`, clipboard), and
+  browser layout that jsdom lacks (`getBoundingClientRect`, viewport size). The one exception
+  is test data: planner component tests replace `data/dataset.json` with the engine fixture,
+  using `datasetModule()` from `engine/testFixtures.ts`, so they don't change with game data.
 
 ## Commands
 

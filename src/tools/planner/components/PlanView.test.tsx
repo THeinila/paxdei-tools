@@ -9,12 +9,11 @@ import { PlanView } from "./PlanView.tsx";
 
 // The planner reads the dataset through lib/data.ts; swap the generated catalogue
 // for the engine's fixture graph so these tests don't move with game updates.
-vi.mock("../../../../data/dataset.json", async () => {
-  const { fixture } = await import("../engine/testFixtures.ts");
-  const ds = fixture();
-  ds.items.wood = { ...ds.items.wood!, maxStackSize: 100 };
-  return { default: ds };
-});
+vi.mock("../../../../data/dataset.json", async () =>
+  (await import("../engine/testFixtures.ts")).datasetModule((ds) => {
+    ds.items.wood = { ...ds.items.wood!, maxStackSize: 100 };
+  }),
+);
 
 let ds: Awaited<ReturnType<typeof loadDataset>>;
 beforeAll(async () => {
@@ -24,6 +23,7 @@ beforeAll(async () => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  Reflect.deleteProperty(navigator, "clipboard"); // set per test; never leak a fake
 });
 
 /** PlanView is controlled; hold the prefs the way ListEditor does. */

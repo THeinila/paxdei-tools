@@ -5,15 +5,14 @@ import { loadDataset } from "../lib/data.ts";
 import { ItemLabel } from "./RecipeTooltip.tsx";
 
 // The engine fixture, with the fields the card shows filled in.
-vi.mock("../../../../data/dataset.json", async () => {
-  const { fixture } = await import("../engine/testFixtures.ts");
-  const ds = fixture();
-  ds.items.plank = { ...ds.items.plank!, tier: 2, rarity: "rare" };
-  ds.items.nail = { ...ds.items.nail!, rarity: "uncommon" };
-  ds.items.wood = { ...ds.items.wood!, iconPath: "/icons/raw wood.webp" };
-  ds.recipes.charcoal!.variants[1]!.profession = null;
-  return { default: ds };
-});
+vi.mock("../../../../data/dataset.json", async () =>
+  (await import("../engine/testFixtures.ts")).datasetModule((ds) => {
+    ds.items.plank = { ...ds.items.plank!, tier: 2, rarity: "rare" };
+    ds.items.nail = { ...ds.items.nail!, rarity: "uncommon" };
+    ds.items.wood = { ...ds.items.wood!, iconPath: "/icons/raw wood.webp" };
+    ds.recipes.charcoal!.variants[1]!.profession = null;
+  }),
+);
 
 beforeAll(async () => {
   await loadDataset();
@@ -62,11 +61,11 @@ describe("ItemLabel and its recipe card", () => {
     expect(card()!.querySelector(".rt-variant")).toBeNull();
   });
 
-  it("TIP-4: on touch, a tap toggles the card and a tap elsewhere closes it", () => {
+  it.each(["touch", "pen"])("TIP-4: with a %s pointer, a tap toggles the card and a tap elsewhere closes it", (pointerType) => {
     render(<p>elsewhere</p>);
     const el = label("plank");
     const tap = () => {
-      fireEvent.pointerDown(el, { pointerType: "touch" });
+      fireEvent.pointerDown(el, { pointerType });
       fireEvent.click(el);
     };
     tap();
@@ -75,7 +74,7 @@ describe("ItemLabel and its recipe card", () => {
     expect(card()).toBeNull();
 
     tap();
-    fireEvent.pointerDown(screen.getByText("elsewhere"), { pointerType: "touch" });
+    fireEvent.pointerDown(screen.getByText("elsewhere"), { pointerType });
     expect(card()).toBeNull();
   });
 

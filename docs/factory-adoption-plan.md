@@ -46,9 +46,9 @@ three of those assumptions, so these rules apply only during adoption:
 
    (Changed on 2026-11-03 at the user's direction. Originally every question went to the
    user.) Discrepancy ACs get **no test during Phase 5**, because their test would be red.
-   They're fixed later as `fix(<KEY>):` work with a real red → green. Until then, the trace
-   lists them as uncovered, and the Phase 6 gate accepts that for ACs on a spec's
-   discrepancy list, and for no other ACs.
+   They get their tests and fixes in Phase 5b, as `fix(<KEY>):` work with a real
+   red → green. Phase 5b must be finished before Phase 6, so the Phase 6 gate makes no
+   exception for them.
 2. **Characterisation red replaces red.** A test for existing behaviour passes the first
    time it runs, and the `tdd` skill says that proves nothing. The evidence instead is a
    **mutation red**: break the code under test (comment out the guard, flip the

@@ -1,28 +1,59 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadDataset } from "../lib/data.ts";
+import Planner from "../Planner.tsx";
 import PlannerHome from "../PlannerHome.tsx";
 import { Search } from "./Search.tsx";
 
 // The engine fixture, plus names that only a correct ranking can order and enough
 // filler to hit the result cap.
 vi.mock("../../../../data/dataset.json", async () => {
-  const { fixture, item } = await import("../engine/testFixtures.ts");
-  const ds = fixture();
-  ds.items.sapwood!.name = "SapWood"; // mixed case: matching must ignore it
-  ds.items.woodcutter = item("woodcutter", true);
-  ds.items.ppwood = { ...item("ppwood", true), name: "ppwood extra long name" };
-  for (let i = 1; i <= 45; i++) ds.items[`stone_${i}`] = { ...item(`stone_${i}`, true), name: `Stone ${i}` };
-  return { default: ds };
+  const { datasetModule, item } = await import("../engine/testFixtures.ts");
+  return datasetModule((ds) => {
+    ds.items.sapwood!.name = "SapWood"; // mixed case: matching must ignore it
+    ds.items.woodcutter = item("woodcutter", true);
+    ds.items.ppwood = { ...item("ppwood", true), name: "ppwood extra long name" };
+    for (let i = 1; i <= 45; i++) ds.items[`stone_${i}`] = { ...item(`stone_${i}`, true), name: `Stone ${i}` };
+  });
 });
 
 beforeAll(async () => {
   await loadDataset();
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
+/** The list editor for one server list, with the API answered by a stubbed fetch.
+ * Returns every PATCH body the editor sent. */
+function renderEditor() {
+  const token = "AAAAAAAAAAAAAAAAAAAAAA"; // 22 base64url chars, like a real token
+  const patches: { state: { targets: { itemId: string; quantity: number }[] }; baseVersion: number }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init?: RequestInit) => {
+      const updatedAt = new Date(0).toISOString();
+      if (init?.method === "PATCH") {
+        const body = JSON.parse(String(init.body));
+        patches.push(body);
+        return Response.json({ version: patches.length, state: body.state, progress: [], updatedAt });
+      }
+      return Response.json({ version: 0, state: { name: "L", targets: [], pathChoices: {} }, progress: [], updatedAt });
+    }),
+  );
+  render(
+    <MemoryRouter initialEntries={[`/planner/${token}`]}>
+      <Routes>
+        <Route path="/planner/:listId" element={<Planner />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  return patches;
+}
 
 const input = () => screen.getByPlaceholderText("Search items to craft…") as HTMLInputElement;
 const type = (text: string) => fireEvent.change(input(), { target: { value: text } });
@@ -68,6 +99,17 @@ describe("Search", () => {
     }
   });
 
+  it("SRCH-6: adding an item that is already a target increases its quantity", async () => {
+    const patches = renderEditor();
+    await screen.findByPlaceholderText("Search items to craft…");
+    type("plank");
+    fireEvent.click(screen.getByRole("button", { name: "Add 1 plank" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add 1 plank" }));
+    await waitFor(() => expect(patches).toHaveLength(2));
+    expect(patches[1]!.state.targets).toEqual([{ itemId: "plank", quantity: 2 }]);
+    expect((document.querySelector(".target-qty") as HTMLInputElement).value).toBe("2");
+  });
+
   it("SRCH-6: clicking a result or its + adds it once, with its quantity", () => {
     const onAdd = vi.fn();
     render(<Search onAdd={onAdd} />);
@@ -110,9 +152,10 @@ describe("Search", () => {
     expect(resultNames().length).toBeGreaterThan(0);
   });
 
-  it("SRCH-9: takes focus in the list editor's search", () => {
-    render(<Search onAdd={() => {}} />);
-    expect(document.activeElement).toBe(input());
+  it("SRCH-9: takes focus in the list editor's search", async () => {
+    renderEditor();
+    const search = await screen.findByPlaceholderText("Search items to craft…");
+    await waitFor(() => expect(document.activeElement).toBe(search)); // focus lands just after mount
   });
 
   it("SRCH-9: doesn't take focus on the directory page", () => {
