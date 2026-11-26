@@ -58,7 +58,9 @@ function OwnedInput({
         min={0}
         value={owned[itemId] ?? ""}
         placeholder="0"
-        onChange={(e) => setOwned(itemId, Math.max(0, Number(e.target.value) || 0))}
+        // Whole units only: a fraction would show briefly and then be truncated by
+        // the server, so round it down before anything is saved or planned.
+        onChange={(e) => setOwned(itemId, Math.max(0, Math.floor(Number(e.target.value) || 0)))}
       />
     </label>
   );
@@ -138,20 +140,22 @@ export function PlanView({
   setOwned,
   setPathChoice,
 }: Props) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   // The 3s poll re-renders this component with a stable `result`, so memoizing
   // keeps the whole section/row tree from being rebuilt on every tick.
   const vm = useMemo(() => buildPlanView(result, getDataset().items, prefs), [result, prefs]);
 
   async function copyMarkdown() {
-    setCopied(false);
+    setCopyState("idle");
     try {
       await navigator.clipboard.writeText(planToMarkdown(vm, { listName, url: shareUrl }));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyState("copied");
     } catch {
-      /* clipboard may be blocked */
+      // Clipboard access can be blocked (permissions, insecure context); say so
+      // rather than leaving the user to paste nothing.
+      setCopyState("failed");
     }
+    setTimeout(() => setCopyState("idle"), 2000);
   }
 
   const empty = result.crafts.length === 0 && result.gather.length === 0;
@@ -260,7 +264,7 @@ export function PlanView({
         </label>
         {vm.totals.hiddenCount > 0 && <span className="muted-note">{vm.totals.hiddenCount} hidden</span>}
         <button className="link-btn toolbar-spacer" onClick={copyMarkdown}>
-          {copied ? "Copied!" : "Copy as Markdown"}
+          {copyState === "copied" ? "Copied!" : copyState === "failed" ? "Copy failed" : "Copy as Markdown"}
         </button>
       </div>
 

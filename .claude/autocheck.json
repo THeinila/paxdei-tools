@@ -1,0 +1,6 @@
+{
+  "tests": true,
+  "finalChecks": {
+    "build": null
+  }
+}

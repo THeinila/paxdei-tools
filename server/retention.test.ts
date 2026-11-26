@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { migrate, openDb, type DB } from "./db.ts";
 import { createListsRouter } from "./lists.ts";
-import { cutoffFor, sweepLists, ttlDaysFromEnv, DEFAULT_TTL_DAYS } from "./retention.ts";
+import { cutoffFor, startRetention, sweepLists, ttlDaysFromEnv, DEFAULT_TTL_DAYS } from "./retention.ts";
 
 let db: DB;
 beforeEach(() => {
@@ -26,27 +26,27 @@ const tokens = (): string[] =>
   }[]).map((r) => r.share_token);
 
 describe("ttlDaysFromEnv", () => {
-  it("defaults to 90 days when unset or blank", () => {
+  it("RET-6: defaults to 90 days when unset or blank", () => {
     expect(ttlDaysFromEnv({} as NodeJS.ProcessEnv)).toBe(DEFAULT_TTL_DAYS);
     expect(ttlDaysFromEnv({ LIST_TTL_DAYS: "" } as NodeJS.ProcessEnv)).toBe(DEFAULT_TTL_DAYS);
   });
 
-  it("honours an explicit value", () => {
+  it("RET-6: honours an explicit value", () => {
     expect(ttlDaysFromEnv({ LIST_TTL_DAYS: "30" } as NodeJS.ProcessEnv)).toBe(30);
   });
 
-  it("treats 0 as 'disabled' rather than 'delete everything'", () => {
+  it("RET-6: treats 0 as 'disabled' rather than 'delete everything'", () => {
     expect(ttlDaysFromEnv({ LIST_TTL_DAYS: "0" } as NodeJS.ProcessEnv)).toBe(0);
   });
 
-  it("falls back to the default on garbage rather than deleting unexpectedly", () => {
+  it("RET-6: falls back to the default on garbage rather than deleting unexpectedly", () => {
     expect(ttlDaysFromEnv({ LIST_TTL_DAYS: "soon" } as NodeJS.ProcessEnv)).toBe(DEFAULT_TTL_DAYS);
     expect(ttlDaysFromEnv({ LIST_TTL_DAYS: "-5" } as NodeJS.ProcessEnv)).toBe(DEFAULT_TTL_DAYS);
   });
 });
 
 describe("sweepLists", () => {
-  it("deletes lists idle past the window and keeps the rest", () => {
+  it("RET-1: deletes lists idle past the window and keeps the rest", () => {
     seedList("fresh", 1);
     seedList("borderline", 89);
     seedList("stale", 120);
@@ -55,13 +55,13 @@ describe("sweepLists", () => {
     expect(tokens()).toEqual(["borderline", "fresh"]);
   });
 
-  it("does nothing when retention is disabled", () => {
+  it("RET-6: does nothing when retention is disabled", () => {
     seedList("ancient", 5000);
     expect(sweepLists(db, 0)).toBe(0);
     expect(tokens()).toEqual(["ancient"]);
   });
 
-  it("cascades progress rows away with the list", () => {
+  it("RET-1: cascades progress rows away with the list", () => {
     const id = seedList("stale", 200);
     db.prepare(
       `INSERT INTO progress (list_id, item_id, qty, by_handle, updated_at)
@@ -73,7 +73,7 @@ describe("sweepLists", () => {
     expect(left.n).toBe(0);
   });
 
-  it("records how many it swept", () => {
+  it("RET-7: records how many it swept", () => {
     seedList("a", 200);
     seedList("b", 200);
     sweepLists(db, 90);
@@ -83,7 +83,7 @@ describe("sweepLists", () => {
     expect(row?.count).toBe(2);
   });
 
-  it("leaves no metric row when nothing was swept", () => {
+  it("RET-7: leaves no metric row when nothing was swept", () => {
     seedList("fresh", 1);
     sweepLists(db, 90);
     const row = db.prepare(`SELECT count FROM metrics WHERE metric = 'lists_swept'`).get();
@@ -103,7 +103,7 @@ describe("activity tracking keeps live lists alive", () => {
       body: JSON.stringify(body),
     });
 
-  it("a progress write rescues a list that was about to be swept", async () => {
+  it("RET-2: a progress write rescues a list that was about to be swept", async () => {
     const id = seedList("settled", 200);
     const token = "settled";
 
@@ -125,7 +125,7 @@ describe("activity tracking keeps live lists alive", () => {
     expect(row.last_activity_at > row.updated_at).toBe(true);
   });
 
-  it("a definition edit also counts as activity", async () => {
+  it("RET-2: a definition edit also counts as activity", async () => {
     seedList("edited", 200);
     const res = await call(`/lists/edited`, {
       method: "PATCH",
@@ -139,7 +139,7 @@ describe("activity tracking keeps live lists alive", () => {
     expect(sweepLists(db, 90)).toBe(0);
   });
 
-  it("merely READING a list does not keep it alive", async () => {
+  it("RET-3: merely READING a list does not keep it alive", async () => {
     seedList("abandoned", 200);
     const res = await call(`/lists/abandoned`);
     expect(res.status).toBe(200);
@@ -148,7 +148,7 @@ describe("activity tracking keeps live lists alive", () => {
     expect(sweepLists(db, 90)).toBe(1);
   });
 
-  it("a newly created list starts with a fresh activity clock", async () => {
+  it("RET-4: a newly created list starts with a fresh activity clock", async () => {
     const res = await post(`/lists`, {
       state: { name: "New", targets: [], pathChoices: {} },
       owned: {},
@@ -160,7 +160,7 @@ describe("activity tracking keeps live lists alive", () => {
 });
 
 describe("migration", () => {
-  it("adds and backfills last_activity_at on a legacy database", () => {
+  it("RET-8: adds and backfills last_activity_at on a legacy database", () => {
     // Rebuild the pre-migration shape, with a list and some newer progress.
     db.exec(`DROP TABLE progress`);
     db.exec(`DROP TABLE lists`);
@@ -199,7 +199,7 @@ describe("migration", () => {
     expect(sweepLists(db, 90)).toBe(0);
   });
 
-  it("is idempotent — re-running does not throw or clobber", () => {
+  it("RET-8: is idempotent — re-running does not throw or clobber", () => {
     seedList("keep", 5);
     const before = db
       .prepare(`SELECT last_activity_at FROM lists WHERE share_token = 'keep'`)
@@ -214,5 +214,86 @@ describe("migration", () => {
       .prepare(`SELECT last_activity_at FROM lists WHERE share_token = 'keep'`)
       .get() as { last_activity_at: string };
     expect(after.last_activity_at).toBe(before.last_activity_at);
+  });
+});
+
+describe("startRetention", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks(); // the RET-N1 setInterval spy, even when its test fails
+  });
+
+  it("RET-5: sweeps at start, then every 24 hours", () => {
+    vi.useFakeTimers();
+    seedList("old", 100);
+    const log = vi.fn();
+    const stop = startRetention(db, { ttlDays: 90, log });
+    expect(tokens()).toEqual([]); // swept immediately
+
+    seedList("old2", 100);
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000 - 1);
+    expect(tokens()).toEqual(["old2"]);
+    vi.advanceTimersByTime(1);
+    expect(tokens()).toEqual([]);
+    stop();
+  });
+
+  it("RET-5: a failing sweep is logged and the next one still runs", () => {
+    vi.useFakeTimers();
+    const log = vi.fn();
+    const broken = { prepare: () => { throw new Error("disk I/O error"); } } as unknown as DB;
+    const stop = startRetention(broken, { ttlDays: 90, log });
+    vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+    expect(log.mock.calls.filter(([m]) => String(m).includes("sweep failed: disk I/O error"))).toHaveLength(2);
+    stop();
+  });
+
+  it("RET-6: 0 disables the sweep and says lists are kept forever", () => {
+    seedList("old", 1000);
+    const log = vi.fn();
+    startRetention(db, { ttlDays: 0, log });
+    expect(tokens()).toEqual(["old"]);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("lists are kept forever"));
+  });
+
+  it("RET-7: logs how many lists a sweep removed, and nothing when it removed none", () => {
+    seedList("a", 100);
+    seedList("b", 100);
+    const log = vi.fn();
+    startRetention(db, { ttlDays: 90, log })();
+    expect(log).toHaveBeenCalledTimes(1);
+    expect(log.mock.calls[0]![0]).toMatch(/swept 2 list/);
+    const quiet = vi.fn();
+    startRetention(db, { ttlDays: 90, log: quiet })();
+    expect(quiet).not.toHaveBeenCalled();
+  });
+
+  it("RET-N1: the daily timer doesn't keep the process alive", () => {
+    const unref = vi.fn();
+    const spy = vi.spyOn(globalThis, "setInterval").mockReturnValue({ unref } as unknown as ReturnType<typeof setInterval>);
+    startRetention(db, { ttlDays: 90, log: () => {} });
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), 24 * 60 * 60 * 1000);
+    expect(unref).toHaveBeenCalled();
+  });
+
+  it("RET-N1: the sweep's activity column is indexed", () => {
+    const plan = db
+      .prepare(`EXPLAIN QUERY PLAN DELETE FROM lists WHERE last_activity_at < ?`)
+      .all("x") as { detail: string }[];
+    expect(plan.map((r) => r.detail).join(" ")).toMatch(/USING (COVERING )?INDEX idx_lists_last_activity/);
+  });
+});
+
+describe("migration safety net", () => {
+  it("RET-8: no list is left without an activity time", () => {
+    db.prepare(
+      `INSERT INTO lists (share_token, version, state, created_at, updated_at, last_activity_at)
+       VALUES ('nullclock', 0, '{}', '2026-01-01T00:00:00.000Z', '2026-01-02T00:00:00.000Z', NULL)`,
+    ).run();
+    migrate(db);
+    const row = db.prepare(`SELECT last_activity_at FROM lists WHERE share_token = 'nullclock'`).get() as {
+      last_activity_at: string | null;
+    };
+    expect(row.last_activity_at).toBe("2026-01-02T00:00:00.000Z");
   });
 });

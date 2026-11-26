@@ -80,3 +80,17 @@ export function fixture(): Dataset {
     meta: { generatedAt: "", source: "fixture", recipeCount: 0, itemCount: 0 },
   };
 }
+
+/**
+ * The fixture shaped as the `data/dataset.json` module, for component tests that
+ * swap the generated catalogue out (vi.mock factories can't share closures, so
+ * each test file calls this from its own factory):
+ *
+ *   vi.mock("../../../../data/dataset.json", async () =>
+ *     (await import("../engine/testFixtures.ts")).datasetModule((ds) => { ... }));
+ */
+export function datasetModule(tweak?: (ds: Dataset) => void): { default: Dataset } {
+  const ds = fixture();
+  tweak?.(ds);
+  return { default: ds };
+}

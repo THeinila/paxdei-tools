@@ -5,6 +5,54 @@ section (the deployable suite, versioned in `package.json`) plus one section per
 (each versioned independently in `src/tools/registry.tsx`). Newest release on top.
 See [RELEASING.md](RELEASING.md) for how versions are bumped.
 
+## [1.5.2] — 2026-11-03
+
+### Toolkit
+- **Specs and tests for everything.** The repo adopted the code-factory workflow:
+  18 feature specs (188 acceptance criteria, all Implemented), 4 epics plus a roadmap,
+  `docs/architecture.md` and 15 ADRs. Every AC has a passing test that cites it
+  (`trace.mjs --report`: 188/188); the suite grew from 109 to 285 tests. Tests added
+  for existing behaviour each failed against a deliberately broken copy of the code
+  first (recorded per commit). See `docs/factory-adoption-plan.md`.
+- **Fixed SRV-5:** an unknown `/api/...` path fell through to the SPA fallback and
+  returned `index.html` with 200. It is now 404 `{ "error": "not found" }`, for any
+  method.
+- **Fixed SRV-10:** with the database down, the day's first `/healthz` from each address
+  got 500 from visitor tracking instead of 503 "db unavailable". Visitor counting is
+  now best-effort and never changes a response.
+- Refactors with no behaviour change, each checked against the previous output:
+  `createApp()` in `server/app.ts` (the same responses to the same probes), and the
+  pipeline rules in `scripts/datasetRules.ts` and `scripts/iconPlan.ts` (the same
+  dataset, ignoring `meta.generatedAt`). New: `npm run check:dataset`.
+- Docs: the README is slimmer and links to the specs. RELEASING.md requires a passing
+  trace before a release. SPRINT_PLAN.md is gone (its open items are the roadmap epic),
+  and the Teamcraft analysis moved to `docs/research/`.
+
+### Crafting Planner 1.5.2
+- **SHR-8:** a list the server doesn't have (never created, or swept after 90 idle days)
+  showed an empty, editable list where every edit failed. It now shows "This list
+  doesn't exist any more" with "Remove from my lists", and stops polling.
+- **PRG-7:** dismissing the display-name prompt dropped the write, and the prompt came
+  back on every keystroke. The write is now saved unattributed, and the prompt isn't
+  shown again until a reload or "set your name".
+- **EDT-9:** "clear" asks before emptying a shared list for everyone.
+- **SHR-5, MDX-10:** "Copy link" and "Copy as Markdown" show "Copy failed" when the
+  clipboard is blocked, instead of doing nothing visible.
+- **SRCH-4:** search shows readable category names instead of internal IDs.
+- **PLAN-10:** the summary's tier count only counts tiers with crafts left.
+- **OWN-8:** fractional have amounts are rounded down before saving.
+- **LST-6:** renaming from the directory retries up to 3 times on a concurrent edit, like
+  other edits.
+- **LST-9:** the directory's "delete" button is now "remove", because it only removes the
+  list from this browser.
+
+#### Verification (2026-11-03)
+- Typecheck clean; 285/285 tests pass; `trace.mjs --report` passes 188/188; spec lint
+  clean; `npm run build` succeeds.
+- `dist-server` smoke probes: only `/api/nope` changed (200 `index.html` → 404 JSON);
+  `/healthz`, `/`, a deep link, an asset, an icon and an unknown token are unchanged.
+- `npm run check:dataset` matches the committed dataset.
+
 ## [1.5.1] — 2026-11-02
 
 ### Toolkit
@@ -210,7 +258,7 @@ every constant below.
   toolbar above it: **Tiered** (the previous fixed view, still the default), **Flat**
   (the engine's dependency order in one list) and **By profession** (grouped by station,
   deepest components first within each). Borrowed from FFXIV Teamcraft's layout system,
-  cut down to three presets — see [docs/TEAMCRAFT_ANALYSIS.md](docs/TEAMCRAFT_ANALYSIS.md).
+  cut down to three presets — see [docs/research/teamcraft-analysis.md](docs/research/teamcraft-analysis.md).
 - **Hide completed** drops rows the owned stock already covers and reports how many it
   hid; **every section heading collapses**, caret and `aria-expanded` included.
 - **Ready badges** on craft steps that nothing unfinished in the plan blocks. Raw

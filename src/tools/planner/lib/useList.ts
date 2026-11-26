@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getDataset } from "./data.ts";
 import { plan, type Target } from "../engine/planner.ts";
 import {
+  ListNotFound,
   VersionConflict,
   getList,
   patchList,
@@ -92,6 +93,8 @@ export interface UseList {
   progress: ProgressMap;
   ready: boolean;
   error: string | null;
+  /** The server has no such list (never created, or swept): SHR-8. */
+  missing: boolean;
   addTarget: (itemId: string, quantity?: number) => void;
   setTargetQty: (itemId: string, quantity: number) => void;
   setOwned: (itemId: string, qty: number) => void;
@@ -106,6 +109,7 @@ export function useList(token: string): UseList {
   const [progress, setProgress] = useState<ProgressMap>({});
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missing, setMissing] = useState(false);
 
   const versionRef = useRef(0);
   // Suppress poll-adoption of the definition while a local edit is being saved,
@@ -210,6 +214,13 @@ export function useList(token: string): UseList {
         if (initial) setReady(true);
       } catch (e) {
         if (cancelled) return;
+        if (e instanceof ListNotFound) {
+          // Gone for good: stop polling and let the editor say so.
+          cancelled = true;
+          setMissing(true);
+          setReady(true);
+          return;
+        }
         setError(e instanceof Error ? e.message : "failed to load list");
         if (initial) setReady(true);
       } finally {
@@ -222,6 +233,7 @@ export function useList(token: string): UseList {
     const schedule = () => {
       if (cancelled) return;
       timer = setTimeout(async () => {
+        if (cancelled) return; // e.g. the list turned out to be gone
         // A hidden tab has nobody watching it; polling it is pure cost to the
         // host. Skip the tick and let the visibility handler catch up on focus.
         if (document.visibilityState === "visible") await poll(false);
@@ -327,8 +339,8 @@ export function useList(token: string): UseList {
       // Write the delta from what we currently show, attributed to the handle.
       // Read through the synchronous mirror, not React state: back-to-back edits
       // must each subtract from the previous one, not from a stale render.
+      // No name is fine: the write is saved unattributed (PRG-7).
       const handle = ensureHandle();
-      if (!handle) return;
       const before = progressRef.current[itemId];
       const current = before?.qty ?? 0;
       const target = Math.max(0, qty);
@@ -384,6 +396,7 @@ export function useList(token: string): UseList {
     progress,
     ready,
     error,
+    missing,
     addTarget,
     setTargetQty,
     setOwned,

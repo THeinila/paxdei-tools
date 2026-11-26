@@ -26,7 +26,7 @@ async function createList(state: unknown, extra: Record<string, unknown> = {}) {
 }
 
 describe("create + get", () => {
-  it("round-trips state and seeds progress from owned", async () => {
+  it("SHR-1, SHR-2: round-trips state and seeds progress from owned", async () => {
     const { token, progress } = await createList(
       { targets: [{ itemId: "axe", quantity: 2 }], pathChoices: { charcoal: "recipe_charcoal_sapwood" } },
       { owned: { sapwood: 5, junk: 0 }, handle: "Alice" },
@@ -41,7 +41,7 @@ describe("create + get", () => {
     expect(body.state.targets).toEqual([{ itemId: "axe", quantity: 2 }]);
   });
 
-  it("round-trips the list name and bounds its length", async () => {
+  it("SHR-11: round-trips the list name and bounds its length", async () => {
     const { token } = await createList({ name: "Stronghold supplies", targets: [], pathChoices: {} });
     const body = (await (await app.request(`/lists/${token}`)).json()) as { state: { name: string } };
     expect(body.state.name).toBe("Stronghold supplies");
@@ -51,18 +51,18 @@ describe("create + get", () => {
     expect(longBody.state.name.length).toBe(80);
   });
 
-  it("defaults name to an empty string when absent", async () => {
+  it("SHR-11: defaults name to an empty string when absent", async () => {
     const { token } = await createList({ targets: [], pathChoices: {} });
     const body = (await (await app.request(`/lists/${token}`)).json()) as { state: { name: string } };
     expect(body.state.name).toBe("");
   });
 
-  it("404s an unknown token", async () => {
+  it("SHR-10: 404s an unknown token", async () => {
     const res = await app.request("/lists/does-not-exist");
     expect(res.status).toBe(404);
   });
 
-  it("drops malformed targets instead of storing them", async () => {
+  it("SHR-11: drops malformed targets instead of storing them", async () => {
     const { token } = await createList({
       targets: [{ itemId: "ok", quantity: 1 }, { itemId: 5, quantity: "x" }, { quantity: 2 }],
       pathChoices: {},
@@ -73,7 +73,7 @@ describe("create + get", () => {
 });
 
 describe("version-guarded edits", () => {
-  it("increments version on a fresh-base PATCH", async () => {
+  it("EDT-2: increments version on a fresh-base PATCH", async () => {
     const { token } = await createList({ targets: [], pathChoices: {} });
     const res = await app.request(`/lists/${token}`, {
       method: "PATCH",
@@ -84,7 +84,7 @@ describe("version-guarded edits", () => {
     expect((await res.json()).version).toBe(1);
   });
 
-  it("rejects a stale baseVersion with 409 and returns the current state", async () => {
+  it("EDT-3: rejects a stale baseVersion with 409 and returns the current state", async () => {
     const { token } = await createList({ targets: [], pathChoices: {} });
     const patch = (base: number, itemId: string) =>
       app.request(`/lists/${token}`, {
@@ -105,7 +105,7 @@ describe("version-guarded edits", () => {
 });
 
 describe("atomic additive progress deltas", () => {
-  it("two +10 deltas on the same item sum to 20", async () => {
+  it("PRG-1: two +10 deltas on the same item sum to 20", async () => {
     const { token } = await createList({ targets: [], pathChoices: {} });
     const bump = (delta: number, handle: string) =>
       app.request(`/lists/${token}/progress`, json({ itemId: "iron", delta, handle }));
@@ -118,7 +118,7 @@ describe("atomic additive progress deltas", () => {
     expect(body.byHandle).toBe("Bob"); // last toucher recorded
   });
 
-  it("a negative delta never drives qty below 0", async () => {
+  it("PRG-2: a negative delta never drives qty below 0", async () => {
     const { token } = await createList({ targets: [], pathChoices: {} });
     const bump = (delta: number) => app.request(`/lists/${token}/progress`, json({ itemId: "iron", delta, handle: "A" }));
     await bump(3);
@@ -126,9 +126,108 @@ describe("atomic additive progress deltas", () => {
     expect((await res.json()).qty).toBe(0);
   });
 
-  it("400s a non-numeric delta", async () => {
+  it("PRG-3: 400s a non-numeric delta", async () => {
     const { token } = await createList({ targets: [], pathChoices: {} });
     const res = await app.request(`/lists/${token}/progress`, json({ itemId: "iron", delta: "lots", handle: "A" }));
     expect(res.status).toBe(400);
+  });
+});
+
+describe("request validation and bounds", () => {
+  const patch = (token: string, body: unknown) =>
+    app.request(`/lists/${token}`, { ...json(body), method: "PATCH" });
+
+  it("EDT-6: rejects a PATCH without a numeric baseVersion and stores nothing", async () => {
+    const { token } = await createList({ name: "keep", targets: [], pathChoices: {} });
+    for (const body of [{ state: { name: "x" } }, { state: { name: "x" }, baseVersion: "0" }]) {
+      const res = await patch(token, body);
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "baseVersion required" });
+    }
+    const after = (await (await app.request(`/lists/${token}`)).json()) as { version: number; state: { name: string } };
+    expect(after).toMatchObject({ version: 0, state: { name: "keep" } });
+  });
+
+  it("SHR-10: an unknown token is 404 on PATCH and on progress writes too", async () => {
+    const res1 = await patch("nope", { state: {}, baseVersion: 0 });
+    expect(res1.status).toBe(404);
+    expect(await res1.json()).toEqual({ error: "not found" });
+    const res2 = await app.request("/lists/nope/progress", json({ itemId: "wood", delta: 1 }));
+    expect(res2.status).toBe(404);
+    expect(await res2.json()).toEqual({ error: "not found" });
+  });
+
+  it("SHR-N1: tokens are 22 base64url characters (128 bits) and never repeat", async () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 200; i++) {
+      const { token } = await createList({});
+      expect(token).toMatch(/^[A-Za-z0-9_-]{22}$/);
+      seen.add(token);
+    }
+    expect(seen.size).toBe(200);
+  });
+
+  it("SHR-11: caps targets at 500 and path choices at 1,000, and bounds quantities", async () => {
+    const targets = Array.from({ length: 600 }, (_, i) => ({ itemId: `i${i}`, quantity: 1 }));
+    const pathChoices = Object.fromEntries(Array.from({ length: 1200 }, (_, i) => [`i${i}`, "r"]));
+    const res = await app.request("/lists", json({ state: { targets, pathChoices } }));
+    const { state } = (await res.json()) as { state: { targets: unknown[]; pathChoices: object } };
+    expect(state.targets).toHaveLength(500);
+    expect(Object.keys(state.pathChoices)).toHaveLength(1000);
+
+    const bounded = await app.request(
+      "/lists",
+      json({
+        state: {
+          targets: [
+            { itemId: "frac", quantity: 2.9 },
+            { itemId: "zero", quantity: 0 },
+            { itemId: "huge", quantity: 10_000_001 },
+            { itemId: "max", quantity: 10_000_000 },
+            { itemId: "x".repeat(129), quantity: 1 },
+          ],
+        },
+      }),
+    );
+    const kept = ((await bounded.json()) as { state: { targets: unknown[] } }).state.targets;
+    expect(kept).toEqual([
+      { itemId: "frac", quantity: 2 },
+      { itemId: "max", quantity: 10_000_000 },
+    ]);
+  });
+
+  it("PRG-2: truncates deltas and caps the stored amount at 10,000,000", async () => {
+    const { token } = await createList({});
+    const post = async (delta: number) =>
+      (await app.request(`/lists/${token}/progress`, json({ itemId: "wood", delta }))).json();
+    expect(await post(2.9)).toMatchObject({ qty: 2 });
+    expect(await post(-1.9)).toMatchObject({ qty: 1 });
+    expect(await post(20_000_000)).toMatchObject({ qty: 10_000_000 });
+  });
+
+  it("PRG-3: rejects an item ID longer than 128 characters", async () => {
+    const { token } = await createList({});
+    const res = await app.request(`/lists/${token}/progress`, json({ itemId: "x".repeat(129), delta: 1 }));
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("creation seeding and progress validation", () => {
+  it("SHR-2: seeded progress is attributed to the creator, and bad amounts are left out", async () => {
+    const { progress } = (await createList({}, {
+      owned: { wood: 3, neg: -2, text: "lots", frac: 2.6 },
+      handle: "Alice",
+    })) as unknown as { progress: { itemId: string; qty: number; byHandle: string | null }[] };
+    expect(progress).toEqual([
+      expect.objectContaining({ itemId: "frac", qty: 2, byHandle: "Alice" }),
+      expect.objectContaining({ itemId: "wood", qty: 3, byHandle: "Alice" }),
+    ]);
+  });
+
+  it("PRG-3: a rejected progress write stores nothing", async () => {
+    const { token } = await createList({});
+    await app.request(`/lists/${token}/progress`, json({ itemId: "iron", delta: "lots" }));
+    const body = (await (await app.request(`/lists/${token}`)).json()) as { progress: unknown[] };
+    expect(body.progress).toEqual([]);
   });
 });

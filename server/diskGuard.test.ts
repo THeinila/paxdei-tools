@@ -12,7 +12,7 @@ function guardedApp(guard: ReturnType<typeof createDiskGuard>) {
 }
 
 describe("createDiskGuard", () => {
-  it("allows writes when there is plenty of space", async () => {
+  it("ABU-7: allows writes when there is plenty of space", async () => {
     const guard = createDiskGuard({ path: process.cwd(), minFreeBytes: 1, log: silent });
     await guard.refresh();
     expect(guard.status().low).toBe(false);
@@ -21,7 +21,7 @@ describe("createDiskGuard", () => {
     expect(res.status).toBe(201);
   });
 
-  it("refuses new lists when free space is below the floor", async () => {
+  it("ABU-7: refuses new lists when free space is below the floor", async () => {
     // A floor larger than any real volume forces the low state.
     const guard = createDiskGuard({
       path: process.cwd(),
@@ -38,7 +38,7 @@ describe("createDiskGuard", () => {
     expect(body.error).toBe("storage full");
   });
 
-  it("fails OPEN when the disk cannot be measured", async () => {
+  it("ABU-8: fails OPEN when the disk cannot be measured", async () => {
     // A path that cannot exist: neither it nor its parent will stat. Blocking
     // writes because we failed to measure would be the wrong call — an
     // unmeasurable disk is not a full one.
@@ -55,7 +55,7 @@ describe("createDiskGuard", () => {
     expect(res.status).toBe(201);
   });
 
-  it("falls back to the parent directory when the database file is absent", async () => {
+  it("ABU-9: falls back to the parent directory when the database file is absent", async () => {
     // Normal on a fresh deployment: data/ exists but data.sqlite does not yet.
     const guard = createDiskGuard({
       path: `${process.cwd()}/definitely-not-created-yet.sqlite`,
@@ -67,7 +67,7 @@ describe("createDiskGuard", () => {
     expect(guard.status().low).toBe(false);
   });
 
-  it("caches, so a burst of requests does not stat the volume every time", async () => {
+  it("ABU-N2: caches, so a burst of requests does not stat the volume every time", async () => {
     const guard = createDiskGuard({
       path: process.cwd(),
       minFreeBytes: 1,
@@ -84,7 +84,7 @@ describe("createDiskGuard", () => {
     expect(guard.status().checkedAt).toBe(first);
   });
 
-  it("reports a sane default floor", () => {
+  it("ABU-N2: reports a sane default floor", () => {
     expect(DEFAULT_MIN_FREE_BYTES).toBe(256 * 1024 * 1024);
   });
 });

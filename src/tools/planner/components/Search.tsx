@@ -54,7 +54,7 @@ export function Search({
               <Icon item={item} />
               <span className="search-name">{item.name}</span>
               <RarityTag itemId={item.id} />
-              <span className="search-cat">{item.isRaw ? "raw material" : item.mainCategoryId}</span>
+              <span className="search-cat">{categoryLabel(item)}</span>
               <input
                 className="search-qty"
                 type="number"
@@ -83,6 +83,31 @@ export function Search({
       )}
     </div>
   );
+}
+
+/** Readable names for the dataset's category IDs (SRCH-4). */
+const CATEGORY_LABELS: Record<string, string> = {
+  armor: "Armor",
+  buildingpieces: "Building pieces",
+  consumables: "Consumables",
+  crafters: "Crafting stations",
+  marketstalls: "Market stalls",
+  materials: "Materials",
+  mounts: "Mounts",
+  projectiles: "Projectiles",
+  props: "Props",
+  shields: "Shields",
+  tools: "Tools",
+  weapons: "Weapons",
+};
+
+/** "Raw material" for raws, else the category's readable name. An ID with no
+ * label yet (a new upstream category) is shown capitalised rather than hidden. */
+export function categoryLabel(item: Item): string {
+  if (item.isRaw) return "Raw material";
+  const id = item.mainCategoryId;
+  if (!id) return "Item";
+  return CATEGORY_LABELS[id] ?? id.charAt(0).toUpperCase() + id.slice(1);
 }
 
 export function Icon({ item }: { item: Item | undefined }) {

@@ -39,9 +39,18 @@ export async function createList(
   return (await res.json()) as CreatedList;
 }
 
+/** Thrown by getList when the server has no such list: never created, or
+ * deleted by the retention sweep (SHR-8). */
+export class ListNotFound extends Error {
+  constructor() {
+    super("not found");
+    this.name = "ListNotFound";
+  }
+}
+
 export async function getList(token: string): Promise<ListSnapshot> {
   const res = await fetch(`/api/lists/${encodeURIComponent(token)}`);
-  if (res.status === 404) throw new Error("not found");
+  if (res.status === 404) throw new ListNotFound();
   if (!res.ok) throw new Error(`getList failed: ${res.status}`);
   return (await res.json()) as ListSnapshot;
 }

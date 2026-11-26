@@ -35,12 +35,12 @@ npm run data      # fetch:raw → build:dataset → fetch:icons
 3. Sanity-check `git diff --stat data/dataset.json` and spot-check a few items
    in the app (`npm run dev`).
 4. Commit the regenerated `data/dataset.json` (together with any rule changes
-   in `build-dataset.ts` that prompted it).
+   in `datasetRules.ts` that prompted it).
 5. Make sure `fetch:icons` ran — new items reference icons that don't exist
    locally yet and would 404 in the app. Deployment re-runs it on every host
    (see `../deploy/DEPLOY.md`).
 
-## Normalization rules (`build-dataset.ts`)
+## Normalization rules (`datasetRules.ts`)
 
 Applied per output item, in this order:
 
@@ -64,11 +64,19 @@ Applied per output item, in this order:
 Market catalog items that never appear in the recipe graph are added as raw
 materials so the item search covers the full catalog.
 
+## Changing the pipeline code
+
+The rules are in `datasetRules.ts` (dataset) and `iconPlan.ts` (icons); `build-dataset.ts` and
+`fetch-icons.ts` only wire them to files, the network and the console. Their tests are
+`datasetRules.test.ts` and `iconPlan.test.ts`. After a refactor that shouldn't change the
+output, run `npm run check:dataset`: it rebuilds from `scripts/.cache` in memory and fails if
+the result differs from the committed `data/dataset.json` (ignoring `meta.generatedAt`).
+
 ## Curation model — never hand-edit `data/dataset.json`
 
 `build:dataset` **fully overwrites** `data/dataset.json` on every run; there is
 no merge step, so any manual edit to that file is silently lost on the next
-regeneration. All permanent curation lives in `build-dataset.ts` itself — add
+regeneration. All permanent curation lives in `datasetRules.ts` itself — add
 an item id to `FORCE_RAW`, extend the qualifier list, or add a new rule — and
 is committed as code, which guarantees it is reapplied every time the pipeline
 runs against fresh upstream data.
@@ -76,7 +84,7 @@ runs against fresh upstream data.
 ## Data shape & consumers
 
 The output structure (`Dataset`, `Item`, `ItemRecipes`, `RecipeVariant`) is
-defined in `../src/tools/planner/engine/types.ts`; `build-dataset.ts` imports
+defined in `../src/tools/planner/engine/types.ts`; `datasetRules.ts` imports
 those types, so shape changes are type-checked end to end. The app loads the
 dataset in `../src/tools/planner/lib/data.ts` and feeds it to the recipe engine
 (`../src/tools/planner/engine/planner.ts`). Changing the output shape means

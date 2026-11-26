@@ -9,6 +9,7 @@ import { useList } from "./lib/useList.ts";
 import { getHandle, promptHandle } from "./lib/handle.ts";
 import {
   DEFAULT_NAME,
+  deleteEntry,
   findOrCreateForToken,
   promoteLocalEntry,
   resolveEntry,
@@ -85,9 +86,9 @@ export default function Planner() {
 
 /** The list editor. Always operates on a shared, server-backed list. */
 function ListEditor({ token, entryId }: { token: string; entryId: string }) {
-  const { state, result, progress, ready, error, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
+  const { state, result, progress, ready, error, missing, addTarget, setTargetQty, setOwned, setPathChoice, setName, clear } =
     useList(token);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [handle, setHandleState] = useState<string | null>(getHandle());
   const [titleDraft, setTitleDraft] = useState(state.name);
   // Per-browser view settings for this list. ListEditor is keyed by token, so a
@@ -106,9 +107,9 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
   // Wait until the list has hydrated (ready, no load error) so we don't overwrite
   // its cached name/count with the empty pre-poll/failed state.
   useEffect(() => {
-    if (!ready || error) return;
+    if (!ready || error || missing) return;
     updateEntry(entryId, { name: state.name || DEFAULT_NAME, targetCount: state.targets.length });
-  }, [ready, error, entryId, state.name, state.targets.length]);
+  }, [ready, error, missing, entryId, state.name, state.targets.length]);
 
   function commitTitle() {
     const name = titleDraft.trim() || DEFAULT_NAME;
@@ -117,21 +118,29 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
   }
 
   async function copyLink() {
-    setCopied(false);
+    setCopyState("idle");
     const url = `${window.location.origin}/planner/${token}`;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyState("copied");
     } catch {
-      /* clipboard may be blocked */
+      // Clipboard access can be blocked; say so instead of failing silently.
+      setCopyState("failed");
     }
+    setTimeout(() => setCopyState("idle"), 2000);
+  }
+
+  function onClear() {
+    // Clearing empties the list for every collaborator, so ask first.
+    if (window.confirm("Remove every target from this list, for everyone using it?")) clear();
   }
 
   function onRename() {
     const next = promptHandle();
     if (next) setHandleState(next);
   }
+
+  if (missing) return <MissingList entryId={entryId} />;
 
   return (
     <>
@@ -159,7 +168,7 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
             </button>
           </span>
           <button className="share-btn" onClick={copyLink}>
-            {copied ? "Link copied!" : "Copy link"}
+            {copyState === "copied" ? "Link copied!" : copyState === "failed" ? "Copy failed" : "Copy link"}
           </button>
         </div>
       </div>
@@ -175,7 +184,7 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
             <div className="targets-head">
               <h2>Crafting list</h2>
               {state.targets.length > 0 && (
-                <button className="link-btn" onClick={clear}>
+                <button className="link-btn" onClick={onClear}>
                   clear
                 </button>
               )}
@@ -222,5 +231,34 @@ function ListEditor({ token, entryId }: { token: string; entryId: string }) {
         paxdei.gaming.tools · inspired by FFXIV Teamcraft
       </p>
     </>
+  );
+}
+
+/** Shown instead of the editor when the server has no such list (SHR-8): it was
+ * never created, or the retention sweep deleted it. */
+function MissingList({ entryId }: { entryId: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="missing-list">
+      <h2>This list doesn't exist any more</h2>
+      <p className="hint">
+        Shared lists are deleted after {LIST_TTL_DAYS} days with no changes. The link may also be
+        mistyped.
+      </p>
+      <div className="header-actions">
+        <button
+          className="share-btn"
+          onClick={() => {
+            deleteEntry(entryId);
+            navigate("/planner");
+          }}
+        >
+          Remove from my lists
+        </button>
+        <Link to="/planner" className="nav-link">
+          ← All lists
+        </Link>
+      </div>
+    </div>
   );
 }

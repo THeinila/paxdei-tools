@@ -20,7 +20,7 @@ function directives(csp: string): Record<string, string[]> {
 }
 
 describe("securityHeaders", () => {
-  it("sets the full set on HTML responses", async () => {
+  it("SRV-7: sets the full set on HTML responses", async () => {
     const res = await get("/");
     expect(res.headers.get("content-security-policy")).toBe(CONTENT_SECURITY_POLICY);
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
@@ -28,13 +28,13 @@ describe("securityHeaders", () => {
     expect(res.headers.get("x-frame-options")).toBe("DENY");
   });
 
-  it("applies to API responses too", async () => {
+  it("SRV-7: applies to API responses too", async () => {
     const res = await get("/api/thing");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-security-policy")).toBeTruthy();
   });
 
-  it("does not allow inline or eval'd SCRIPT", async () => {
+  it("SRV-8: does not allow inline or eval'd SCRIPT", async () => {
     // The relaxation the app needs is for styles only. If this ever loosens,
     // the CSP has stopped being worth having.
     const d = directives(CONTENT_SECURITY_POLICY);
@@ -43,12 +43,12 @@ describe("securityHeaders", () => {
     expect(d["script-src"]).not.toContain("'unsafe-eval'");
   });
 
-  it("allows inline STYLE, which the recipe tooltip needs to position itself", async () => {
+  it("SRV-8: allows inline STYLE, which the recipe tooltip needs to position itself", async () => {
     const d = directives(CONTENT_SECURITY_POLICY);
     expect(d["style-src"]).toContain("'unsafe-inline'");
   });
 
-  it("keeps everything same-origin, since the app loads no third-party assets", async () => {
+  it("SRV-8: keeps everything same-origin, since the app loads no third-party assets", async () => {
     const d = directives(CONTENT_SECURITY_POLICY);
     expect(d["default-src"]).toEqual(["'self'"]);
     expect(d["connect-src"]).toEqual(["'self'"]);
@@ -56,7 +56,7 @@ describe("securityHeaders", () => {
     expect(d["img-src"]).toEqual(["'self'", "data:"]);
   });
 
-  it("refuses to be framed and blocks plugins and base-tag injection", async () => {
+  it("SRV-8: refuses to be framed and blocks plugins and base-tag injection", async () => {
     const d = directives(CONTENT_SECURITY_POLICY);
     expect(d["frame-ancestors"]).toEqual(["'none'"]);
     expect(d["object-src"]).toEqual(["'none'"]);

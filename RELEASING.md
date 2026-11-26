@@ -27,10 +27,14 @@ a release train that ticks forward on every release.
 1. Bump the changed tool's `version` in `src/tools/registry.tsx`.
 2. Bump `version` in `package.json` (the toolkit / release-train number).
 3. Add a dated section to `CHANGELOG.md` under the **Toolkit** heading and the relevant
-   tool heading(s) — the technical record.
+   tool heading(s) — the technical record. Each entry cites the AC IDs it adds or changes
+   (`PLAN-10`, `SHR-8`, …), and the spec's changelog gets a matching line.
 4. Add a matching entry to `src/shell/releases.ts` — the **user-facing** "What's New".
    Write it in plain language (what a player can now do), grouped New / Improved / Fixed,
    per tool. Don't copy the technical wording from `CHANGELOG.md`.
-5. Commit: `git commit -m "release: v<toolkit-version>"`.
-6. Tag: `git tag -a v<toolkit-version> -m "v<toolkit-version>"`.
-7. Build and deploy from the tag (`npm run build`).
+5. Verify: `npm run typecheck`, `npm run test:report`, then
+   `node <code-factory>/plugins/verify/bin/trace.mjs --report .factory/vitest.json`. The
+   trace must pass: every AC that isn't withdrawn has a passing test.
+6. Commit: `git commit -m "release: v<toolkit-version>"`.
+7. Tag: `git tag -a v<toolkit-version> -m "v<toolkit-version>"`.
+8. Build and deploy from the tag (`npm run build`).
