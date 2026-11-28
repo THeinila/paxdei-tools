@@ -81,8 +81,7 @@ Draft ACs:
 
 ### 10. row-assignments · Key: ASG
 Story: As a member of a group, I want to claim rows in a shared list, so that we don't both gather the same ore.
-Depends on: —
-Also needs: collaboration/shared-progress
+Depends on: collaboration/shared-progress
 Draft ACs:
 - ASG-1: Anyone with the link can claim or release a row. The claimant's display name is shown on the row for everyone within one poll.
 
