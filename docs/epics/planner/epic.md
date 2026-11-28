@@ -10,8 +10,8 @@ and a player can follow the plan top to bottom without working anything out by h
 **Backfill.** Every feature here is already built (Crafting Planner 1.5.1). The order
 records dependencies, not delivery. The draft ACs come from the code and the existing
 tests in `src/tools/planner/engine/*.test.ts`. They become specs in adoption Phase 3.
-`Also needs:` lines record dependencies on other epics, which `spec.mjs lint` can't check
-yet.
+A dependency on another epic's feature is written `<epic>/<slug>`. The lint checks that it
+exists, but not its order.
 
 ## Features
 
@@ -86,8 +86,7 @@ Draft ACs:
 
 ### 8. item-search · Key: SRCH
 Story: As a player, I want to search the item catalogue by name and add an item with a quantity, so that I can build a list of what I want to make.
-Depends on: —
-Also needs: collaboration/share-link (results are added to a server-backed list)
+Depends on: collaboration/share-link
 Draft ACs:
 - SRCH-1: Typing at least 2 characters lists matching items by case-insensitive substring. Prefix matches rank first, then shorter names, up to 40 results.
 - SRCH-2: Each result shows its icon, name, rarity tag and category ("raw material" for raws), and a quantity field that defaults to 1 and can't go below 1.
